@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>East China Sea Crisis — NSC Simulation</title>
+<meta name="description" content="An interactive National Security Council simulation exploring the 2016 East China Sea dispute between China and Japan.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: #080e18;
+    color: #d0d8e0;
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Skip link */
+  .skip-link {
+    position: absolute; left: -9999px; top: 0;
+    background: #c4a35a; color: #0d1b2a; padding: 8px 16px;
+    font-size: 14px; z-index: 1000; text-decoration: none; font-weight: bold;
+  }
+  .skip-link:focus { left: 8px; top: 8px; }
+  /* Focus styles - visible for keyboard, hidden for mouse */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 3px solid #c4a35a;
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  button:focus-visible {
+    outline: 3px solid #c4a35a;
+    outline-offset: 3px;
+  }
+  /* Visually hidden but accessible to screen readers */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+</style>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useCallback, useMemo, useEffect, useRef } = React;
+
+// ═══════════════════════════════════════════════════════════
+// GAME DATA
+// ═══════════════════════════════════════════════════════════
+
+const ROLES = {
+  president: {
+    id: "president",
+    title: "President of the United States",
+    shortTitle: "President",
+    icon: "\u2605",
+    color: "#c4a35a",
+    description: "Commander in Chief. You weigh all advice and make the final call on U.S. policy.",
+    alignment: 0,
+    briefing: "As President, you preside over this National Security Council meeting. Your advisors will present competing perspectives \u2014 some will urge caution and diplomacy, others will push for a show of strength. You must weigh immediate risks against long-term strategic interests.\n\nYour goals:\n\u2022 Select policy options after hearing from your NSC team\n\u2022 Balance the U.S. treaty commitment to Japan against the need for stable relations with China\n\u2022 Consider how your decisions affect American credibility, the global economy, and regional stability\n\nRemember: there is no cost-free option. Every choice involves trade-offs between competing American interests.",
+  },
+  secstate: {
+    id: "secstate",
+    title: "Secretary of State",
+    shortTitle: "Sec. of State",
+    icon: "\u2696",
+    color: "#4a90d9",
+    description: "Chief diplomat. You see this crisis through the lens of alliances, relationships, and negotiation.",
+    alignment: -1,
+    briefing: "As Secretary of State, you are the President's principal foreign policy advisor. Your department maintains relationships with both Tokyo and Beijing, and you understand the nuances of each government's position.\n\nYour goals:\n\u2022 Advise the President on how each option affects U.S. relationships and credibility\n\u2022 Identify diplomatic tools that could de-escalate the crisis\n\u2022 Weigh the U.S.-Japan alliance obligations against the need for cooperation with China on issues like nonproliferation, climate change, and trade\n\nKey context: The U.S. has affirmed that the Senkaku/Diaoyu Islands fall under the mutual security treaty with Japan, but has not taken a position on sovereignty. This careful ambiguity has been deliberate \u2014 and any shift could have far-reaching consequences.",
+  },
+  secdef: {
+    id: "secdef",
+    title: "Secretary of Defense",
+    shortTitle: "Sec. of Defense",
+    icon: "\u25C6",
+    color: "#d94a4a",
+    description: "Head of the Pentagon. You assess military risks, capabilities, and the costs of action or inaction.",
+    alignment: 1,
+    briefing: "As Secretary of Defense, you oversee the U.S. military \u2014 including the 54,000 troops stationed in and around Japan. You must assess what military options are available, what they would cost, and what signals they would send.\n\nYour goals:\n\u2022 Evaluate the feasibility and consequences of military options\n\u2022 Identify ways to prevent escalation to the point where military intervention becomes necessary\n\u2022 Consider how U.S. actions (or inaction) affect the broader military posture in the Asia-Pacific\n\nKey context: China's military modernization has accelerated rapidly. The People's Liberation Army Navy now operates the largest navy in the world by number of vessels. Any military engagement would carry significant risks and would likely draw in forces from across the Pacific theater.",
+  },
+  sectreas: {
+    id: "sectreas",
+    title: "Secretary of the Treasury",
+    shortTitle: "Sec. of Treasury",
+    icon: "\u25CE",
+    color: "#4ac4a3",
+    description: "Chief economic advisor. You focus on trade, financial stability, and the economic costs of every option.",
+    alignment: -1,
+    briefing: "As Secretary of the Treasury, you see this crisis through its economic dimensions \u2014 and they are enormous. China and Japan are the two largest foreign holders of U.S. Treasury securities, each holding over $1 trillion. Annual trade with China exceeds $500 billion; with Japan, nearly $200 billion.\n\nYour goals:\n\u2022 Assess the economic risks of escalation, including impacts on trade, investment, and financial markets\n\u2022 Evaluate economic tools (sanctions, incentives) as policy options\n\u2022 Ensure the President understands the financial consequences of each path\n\nKey context: The East China Sea shipping lanes carry a massive volume of global trade, including energy supplies. Any disruption would ripple through the global economy. Markets are already reacting nervously to the rising tensions.",
+  },
+  nsa: {
+    id: "nsa",
+    title: "National Security Advisor",
+    shortTitle: "Nat'l Security Advisor",
+    icon: "\u25C8",
+    color: "#9b59b6",
+    description: "The honest broker. You ensure the President hears all perspectives and sees the full picture.",
+    alignment: 0,
+    briefing: "As National Security Advisor, you have a unique role: you don't represent any department. You serve as the \"honest broker\" of the policy process, ensuring the President gets complete information and a full range of options.\n\nYour goals:\n\u2022 Facilitate discussion and ensure all perspectives are heard\n\u2022 Present the President with clear, viable options and their trade-offs\n\u2022 Identify the key factors the President must balance in making a decision\n\nKey context: The U.S. has maintained a policy of neutrality on sovereignty while affirming its treaty commitment to defend Japanese-administered territory. This policy has kept the peace but is now being tested. Whatever the President decides will set a precedent for how the U.S. handles similar disputes across Asia.",
+  },
+};
+
+const ROLE_ORDER = ["president", "secstate", "secdef", "sectreas", "nsa"];
+
+const getNpcReactors = (playerRole, roundIndex) => {
+  const others = ROLE_ORDER.filter((r) => r !== playerRole);
+  const pairings = [
+    [others[0], others[2]],
+    [others[1], others[3]],
+    [others[2], others[0]],
+    [others[3], others[1]],
+    [others[0], others[3]],
+  ];
+  return pairings[roundIndex % pairings.length];
+};
+
+const getNpcMood = (npcAlignment, playerChoiceValue) => {
+  const diff = Math.abs(npcAlignment - playerChoiceValue);
+  if (diff === 0) return "supportive";
+  if (diff === 1) return "neutral";
+  return "agitated";
+};
+
+const NPC_DIALOGUE = {
+  president: {
+    supportive: [
+      "I think we're on the right track here. This is exactly the kind of measured approach America needs to project.",
+      "Good. This direction protects our interests while keeping our options open.",
+    ],
+    neutral: [
+      "I want to hear more from the rest of the council before I commit to a direction.",
+      "There are merits here, but I need to understand the second-order effects.",
+    ],
+    agitated: [
+      "I'm not comfortable with where this is heading. We need to think about the message this sends to every ally watching.",
+      "Let's slow down. I don't want to be the president who either abandoned an ally or stumbled into a war.",
+    ],
+  },
+  secstate: {
+    supportive: [
+      "This preserves our diplomatic relationships and gives us room to maneuver. Our embassies in Tokyo and Beijing can work with this.",
+      "I agree. Diplomacy takes patience, and this shows we're serious without burning bridges.",
+    ],
+    neutral: [
+      "My concern is how Beijing and Tokyo will each interpret this. We need to be precise in our messaging.",
+      "I can work with this, but I want to flag that our ambassador in Beijing is reporting significant anxiety in Chinese leadership.",
+    ],
+    agitated: [
+      "If we go this route, I need to warn you \u2014 we risk pushing China into a corner where their domestic politics won't let them back down.",
+      "This could unravel years of careful diplomacy. Our allies across Asia are watching how we handle this.",
+    ],
+  },
+  secdef: {
+    supportive: [
+      "From a military standpoint, this posture is sound. It signals resolve without overcommitting our forces.",
+      "Pacific Command can execute this. It keeps our people safe while demonstrating capability.",
+    ],
+    neutral: [
+      "I can support this, but I want to ensure we're not creating gaps in our readiness elsewhere in the theater.",
+      "This is workable. I'd like to brief the President separately on contingency plans if the situation deteriorates.",
+    ],
+    agitated: [
+      "With respect, if we don't show strength now, we're inviting escalation. Beijing reads restraint as weakness.",
+      "Our forces in the Pacific need clear guidance. Ambiguity gets people killed. I strongly urge a firmer posture.",
+    ],
+  },
+  sectreas: {
+    supportive: [
+      "The economic implications of this approach are manageable. Markets should respond well to a measured stance.",
+      "This protects the trade relationships that underpin both economies. Smart move.",
+    ],
+    neutral: [
+      "I need to flag that markets are already jittery. Whatever we decide, we need to signal stability.",
+      "The economic data cuts both ways here. We have leverage, but so do they \u2014 those Treasury holdings are a two-edged sword.",
+    ],
+    agitated: [
+      "I have to be blunt: this path risks a trade disruption that would cost American jobs and hit consumers hard.",
+      "If China decides to dump Treasury securities in response, we're looking at serious financial turbulence. We need to factor that in.",
+    ],
+  },
+  nsa: {
+    supportive: [
+      "This gives the President a defensible position that accounts for the key trade-offs. I think the council is converging well.",
+      "I've been tracking all the inputs and this approach addresses the core concerns across the board.",
+    ],
+    neutral: [
+      "I want to make sure we've fully explored the alternatives before the President commits. There are dimensions we haven't discussed.",
+      "Let me synthesize where we are: we have legitimate concerns on multiple sides. The question is which risk we're most willing to accept.",
+    ],
+    agitated: [
+      "I have to flag that we're drifting toward a position that doesn't account for some critical factors. We need to step back.",
+      "The President needs to hear the full picture. I don't think we've adequately considered how this plays out over the next six months.",
+    ],
+  },
+};
+
+const ROUNDS = [
+  {
+    id: 1,
+    title: "The NSC Convenes",
+    narrative: "It's September 2016. Over the summer, tensions in the East China Sea have escalated sharply. In June, a Chinese naval frigate \u2014 not just a coast guard vessel \u2014 sailed through the disputed zone near the Senkaku/Diaoyu Islands for the first time. Weeks later, Japan scrambled fighters to intercept Chinese military aircraft, and Japanese pilots briefly locked weapons radar on the Chinese planes.\n\nNow, hundreds of Chinese fishing vessels have appeared near the disputed islands, accompanied by seven Chinese law enforcement ships. The world is watching. The President has convened the National Security Council to decide how the United States should respond.",
+    sceneType: "briefing",
+    sceneAlt: "Illustration of the White House Situation Room with silhouettes of officials seated around a conference table, NSC seal displayed above.",
+    choices: {
+      president: [
+        { text: "Direct the Pentagon to raise military readiness across the Pacific theater and signal that the U.S. stands firmly with Japan.", track: 1, label: "Show of Strength" },
+        { text: "Order a comprehensive interagency review of all options before making any public statements or military moves.", track: 0, label: "Measured Review" },
+        { text: "Instruct the State Department to open immediate back-channel communications with Beijing and Tokyo to de-escalate quietly.", track: -1, label: "Quiet Diplomacy" },
+      ],
+      secstate: [
+        { text: "Recommend the President issue a strong public statement condemning China's provocative actions and reaffirming the U.S.-Japan alliance.", track: 1, label: "Public Condemnation" },
+        { text: "Propose simultaneous diplomatic outreach to both Tokyo and Beijing to understand their red lines and find common ground.", track: 0, label: "Dual Engagement" },
+        { text: "Urge the President to avoid public statements and instead initiate quiet back-channel talks through your embassy contacts in Beijing.", track: -1, label: "Back-Channel Talks" },
+      ],
+      secdef: [
+        { text: "Recommend deploying a carrier strike group to the East China Sea as a visible deterrent and statement of U.S. commitment.", track: 1, label: "Deploy Naval Force" },
+        { text: "Propose raising the alert level for Pacific Command and increasing intelligence, surveillance, and reconnaissance in the area.", track: 0, label: "Heightened Readiness" },
+        { text: "Counsel restraint \u2014 recommend against any military repositioning that China could interpret as provocative.", track: -1, label: "Military Restraint" },
+      ],
+      sectreas: [
+        { text: "Recommend preparing targeted economic sanctions against Chinese entities involved in the maritime provocations.", track: 1, label: "Prepare Sanctions" },
+        { text: "Present the President with a detailed analysis of the economic exposure on all sides to frame the stakes of each option.", track: 0, label: "Economic Risk Assessment" },
+        { text: "Propose offering economic incentives \u2014 perhaps accelerated trade talks \u2014 to give China a face-saving reason to pull back.", track: -1, label: "Economic Incentives" },
+      ],
+      nsa: [
+        { text: "Recommend the President take a strong public position immediately, warning that the U.S. will honor its treaty obligations to Japan.", track: 1, label: "Firm Public Stance" },
+        { text: "Propose a structured 48-hour policy review to ensure the President has a full menu of options before committing to any direction.", track: 0, label: "Structured Review" },
+        { text: "Recommend engaging both parties privately before any public action, emphasizing that quiet diplomacy preserves the most flexibility.", track: -1, label: "Private Engagement" },
+      ],
+    },
+  },
+  {
+    id: 2,
+    title: "Pressure Mounts",
+    narrative: "The international situation has not improved. China has announced expanded naval exercises in waters near the disputed islands \u2014 its largest military drills in the East China Sea in over a decade. Japan's Prime Minister has publicly called on Washington to \"demonstrate the strength of our alliance.\" Meanwhile, media coverage is intensifying, with pundits debating whether the U.S. will stand by its treaty commitments.\n\nIntelligence reports indicate that Chinese domestic media is portraying the situation as a test of national sovereignty. Any Chinese leader who appears to back down would face severe domestic political consequences. Similar dynamics are at play in Japan, where nationalist sentiment is running high.",
+    sceneType: "escalation",
+    sceneAlt: "Illustration of two naval vessels approaching each other in the East China Sea with a warning symbol between them.",
+    choices: {
+      president: [
+        { text: "Publicly affirm the U.S. defense commitment to Japan and order joint naval exercises in the East China Sea.", track: 1, label: "Joint Exercises" },
+        { text: "Make a carefully worded statement urging both sides to reduce military activity while privately pressing Japan to avoid provocative moves.", track: 0, label: "Balanced Pressure" },
+        { text: "Propose a trilateral diplomatic framework \u2014 U.S., China, and Japan \u2014 to negotiate a crisis management agreement.", track: -1, label: "Trilateral Framework" },
+      ],
+      secstate: [
+        { text: "Recommend a joint public statement with Japan explicitly invoking the mutual security treaty for the first time in this crisis.", track: 1, label: "Invoke the Treaty" },
+        { text: "Propose dispatching a senior envoy to both capitals to negotiate a mutual freeze on military activity near the islands.", track: 0, label: "Envoy Mission" },
+        { text: "Recommend bringing the matter to the UN Security Council to internationalize the dispute and reduce bilateral pressure.", track: -1, label: "Go to the UN" },
+      ],
+      secdef: [
+        { text: "Recommend conducting joint U.S.-Japan naval exercises in the East China Sea to demonstrate alliance readiness.", track: 1, label: "Joint Exercises" },
+        { text: "Propose increasing surveillance flights and submarine patrols to monitor the situation without overt provocation.", track: 0, label: "Intelligence Posture" },
+        { text: "Recommend establishing a military-to-military hotline with China to prevent miscalculation, even if it means pausing exercises.", track: -1, label: "Military Hotline" },
+      ],
+      sectreas: [
+        { text: "Recommend signaling to China that continued escalation will trigger a review of trade and investment agreements.", track: 1, label: "Trade Pressure" },
+        { text: "Propose coordinating with G7 allies on a joint economic statement urging restraint from all parties.", track: 0, label: "G7 Coordination" },
+        { text: "Recommend offering China a package of economic cooperation measures in exchange for reducing military activity.", track: -1, label: "Cooperation Package" },
+      ],
+      nsa: [
+        { text: "Recommend the President publicly support Japan while privately warning Beijing of consequences for further escalation.", track: 1, label: "Public-Private Split" },
+        { text: "Propose a dual-track approach: maintain current military posture while pursuing diplomatic engagement through multiple channels.", track: 0, label: "Dual Track" },
+        { text: "Recommend the President personally call the Chinese president to propose a mutual step-down before positions harden further.", track: -1, label: "Presidential Call" },
+      ],
+    },
+  },
+  {
+    id: 3,
+    title: "The Incident",
+    narrative: "A crisis within the crisis: early this morning, a Japanese coast guard cutter and a Chinese coast guard vessel collided near the Senkaku/Diaoyu Islands. Both ships sustained significant damage. There are injuries but no fatalities \u2014 yet. Both governments are blaming the other for the collision.\n\nChina is demanding a formal Japanese apology and has dispatched additional naval vessels toward the area. Japan's Defense Ministry has put its Self-Defense Forces on heightened alert. Social media in both countries is erupting with nationalist anger, and protests are breaking out in several Chinese cities.\n\nThe President needs a recommendation now. This is the most dangerous moment in East Asian security since the Korean War armistice.",
+    sceneType: "crisis",
+    sceneAlt: "Collision alert illustration showing two coast guard vessels colliding near the disputed islands, with expanding shockwave rings at the point of impact.",
+    choices: {
+      president: [
+        { text: "Order U.S. naval vessels to position themselves between Chinese and Japanese forces as a buffer and a warning.", track: 1, label: "Interposition" },
+        { text: "Call for an immediate ceasefire and mutual withdrawal from the area, offering U.S. mediation.", track: 0, label: "Ceasefire Call" },
+        { text: "Announce that the U.S. is prepared to host emergency peace talks and will not take sides in the incident itself.", track: -1, label: "Host Peace Talks" },
+      ],
+      secstate: [
+        { text: "Recommend invoking the U.S.-Japan security treaty and issuing a formal diplomatic protest to Beijing.", track: 1, label: "Formal Protest" },
+        { text: "Propose emergency calls to both foreign ministers demanding an immediate stand-down while offering U.S. mediation.", track: 0, label: "Emergency Mediation" },
+        { text: "Recommend offering to bring the dispute to the International Court of Justice for binding arbitration.", track: -1, label: "International Arbitration" },
+      ],
+      secdef: [
+        { text: "Recommend deploying U.S. forces to the area immediately to enforce a separation between Chinese and Japanese forces.", track: 1, label: "Force Deployment" },
+        { text: "Recommend placing forces on high alert and moving assets closer, but not directly into the disputed zone.", track: 0, label: "Alert & Reposition" },
+        { text: "Recommend against deploying forces into a chaotic situation and instead propose a military-to-military call with China's PLA.", track: -1, label: "Direct PLA Contact" },
+      ],
+      sectreas: [
+        { text: "Recommend immediate preparation of a comprehensive sanctions package targeting Chinese maritime and military entities.", track: 1, label: "Sanctions Package" },
+        { text: "Brief the President on the immediate market fallout and recommend coordinating with the Federal Reserve on financial stability.", track: 0, label: "Market Stabilization" },
+        { text: "Recommend using economic channels to signal that the U.S. values the trade relationship and wants a peaceful resolution.", track: -1, label: "Economic Reassurance" },
+      ],
+      nsa: [
+        { text: "Recommend the President make a prime-time address declaring this a threat to international order and announcing U.S. military support for Japan.", track: 1, label: "National Address" },
+        { text: "Recommend a measured public statement calling for calm while activating every diplomatic and military channel privately.", track: 0, label: "Measured Response" },
+        { text: "Recommend the President urgently convene a call with both the Chinese president and Japanese prime minister to impose a cooling-off period.", track: -1, label: "Leader-Level Call" },
+      ],
+    },
+  },
+  {
+    id: 4,
+    title: "The Crossroads",
+    narrativeByPath: {
+      assertive: "Your firm approach has sent a clear message \u2014 but it has also backed China into a corner. Beijing has responded to U.S. military posturing by deploying its own carrier group to the East China Sea. Chinese state media is running continuous coverage framing the U.S. as an aggressor supporting Japanese territorial theft.\n\nThe situation is now a direct U.S.-China military standoff. A single miscalculation \u2014 a fighter pilot's split-second decision, a radar lock misinterpreted \u2014 could trigger an armed clash between the world's two largest economies and nuclear powers.\n\nYou have one more chance to shape the outcome.",
+      moderate: "Your balanced approach has kept options open, but the situation remains volatile. The collision has created a crisis of its own, with both China and Japan demanding the other accept responsibility. Neither side wants war, but neither can be seen backing down domestically.\n\nIntelligence reports suggest Chinese leadership is looking for an off-ramp but cannot find one that doesn't look like capitulation. Japan is similarly constrained. The U.S. is in a unique position to create that off-ramp \u2014 but it has to be credible to both sides.\n\nThe President needs your recommendation on how to break the deadlock.",
+      diplomatic: "Your diplomatic efforts are showing results. Both sides have signaled willingness to talk, but neither will make the first public move toward de-escalation. Back-channel communications have revealed that Chinese leaders are concerned about losing face, while Japanese leaders fear appearing weak on sovereignty.\n\nHowever, there are spoilers: hardliners in both governments are pushing for escalation, and nationalist media coverage is making compromise politically toxic. Your diplomatic window may be closing.\n\nThe President needs your recommendation on how to lock in a diplomatic breakthrough before it slips away.",
+    },
+    sceneType: "crossroads",
+    sceneAlt: "A decision point diagram showing three diverging paths labeled Escalate, Hold, and De-escalate.",
+    choices: {
+      president: {
+        assertive: [
+          { text: "Maintain the military posture and demand China withdraw its forces first as a precondition for talks.", track: 1, label: "Hold the Line" },
+          { text: "Quietly offer China a face-saving diplomatic exit while maintaining visible U.S. military presence.", track: 0, label: "Quiet Off-Ramp" },
+          { text: "Announce a unilateral 48-hour stand-down of U.S. military activity and challenge both sides to do the same.", track: -1, label: "Unilateral Stand-Down" },
+        ],
+        moderate: [
+          { text: "Increase pressure on China while shielding Japan, making clear the U.S. won't tolerate further escalation.", track: 1, label: "Lean Toward Japan" },
+          { text: "Propose a simultaneous, face-saving step-back: all three nations reduce military activity together.", track: 0, label: "Mutual Step-Back" },
+          { text: "Offer to take the sovereignty question off the table entirely and focus solely on preventing armed conflict.", track: -1, label: "Separate Issues" },
+        ],
+        diplomatic: [
+          { text: "Set a deadline: if talks don't produce results in 72 hours, the U.S. will publicly support Japan's position.", track: 1, label: "Deadline Pressure" },
+          { text: "Propose a joint communiqu\u00e9 that lets both sides claim progress without conceding on sovereignty.", track: 0, label: "Joint Communiqu\u00e9" },
+          { text: "Offer comprehensive U.S. economic and security guarantees to both sides as part of a long-term framework agreement.", track: -1, label: "Grand Bargain" },
+        ],
+      },
+      secstate: {
+        assertive: [
+          { text: "Recommend maintaining diplomatic pressure on China while publicly rallying allied support for the U.S.-Japan position.", track: 1, label: "Allied Coalition" },
+          { text: "Propose offering China a private diplomatic off-ramp through a special envoy with authority to negotiate.", track: 0, label: "Special Envoy" },
+          { text: "Urge an immediate shift to diplomacy \u2014 recommend the U.S. propose emergency talks with no preconditions.", track: -1, label: "No Preconditions" },
+        ],
+        moderate: [
+          { text: "Recommend issuing a joint statement with key allies to increase pressure on China to accept mediation.", track: 1, label: "Allied Pressure" },
+          { text: "Propose shuttle diplomacy \u2014 personally visiting both capitals to broker a mutual stand-down agreement.", track: 0, label: "Shuttle Diplomacy" },
+          { text: "Recommend a UN-brokered ceasefire resolution that provides international cover for both sides to step back.", track: -1, label: "UN Resolution" },
+        ],
+        diplomatic: [
+          { text: "Recommend setting a firm timeline for talks and warning both sides of consequences for stalling.", track: 1, label: "Firm Timeline" },
+          { text: "Propose expanding the diplomatic framework to include other regional stakeholders like ASEAN.", track: 0, label: "Regional Framework" },
+          { text: "Recommend the President personally guarantee both sides that the U.S. will respect any negotiated outcome.", track: -1, label: "Presidential Guarantee" },
+        ],
+      },
+      secdef: {
+        assertive: [
+          { text: "Recommend maintaining current force deployment and preparing contingency plans for armed conflict.", track: 1, label: "Prepare for Conflict" },
+          { text: "Propose a controlled de-escalation: pull back the carrier group slightly while maintaining surveillance.", track: 0, label: "Controlled Pullback" },
+          { text: "Recommend an immediate stand-down and direct military-to-military talks with China's Central Military Commission.", track: -1, label: "Military Diplomacy" },
+        ],
+        moderate: [
+          { text: "Recommend increasing the U.S. naval presence as a deterrent while supporting diplomatic efforts.", track: 1, label: "Deterrent Posture" },
+          { text: "Propose a mutual military disengagement zone around the islands, enforced by all three navies.", track: 0, label: "Disengagement Zone" },
+          { text: "Recommend pulling U.S. military assets back to signal that the U.S. trusts the diplomatic process.", track: -1, label: "Signal Trust" },
+        ],
+        diplomatic: [
+          { text: "Recommend maintaining a quiet military presence to backstop the diplomatic gains and deter spoilers.", track: 1, label: "Backstop Diplomacy" },
+          { text: "Propose a joint military confidence-building measure \u2014 a trilateral maritime safety exercise.", track: 0, label: "Safety Exercise" },
+          { text: "Recommend fully withdrawing U.S. military assets from the immediate area as a goodwill gesture.", track: -1, label: "Goodwill Withdrawal" },
+        ],
+      },
+      sectreas: {
+        assertive: [
+          { text: "Recommend activating the prepared sanctions and rallying G7 economic pressure on China.", track: 1, label: "Activate Sanctions" },
+          { text: "Propose using economic leverage privately \u2014 signal to China that sanctions are ready but can be avoided.", track: 0, label: "Leverage Threat" },
+          { text: "Warn that the economic costs of a trade war would devastate both economies and recommend pulling back.", track: -1, label: "Cost Warning" },
+        ],
+        moderate: [
+          { text: "Recommend economic pressure on China through coordinated allied action on trade and investment.", track: 1, label: "Coordinated Pressure" },
+          { text: "Propose an economic incentive package tied to successful de-escalation milestones.", track: 0, label: "Incentive Package" },
+          { text: "Recommend offering expanded economic cooperation with both nations as a reward for peaceful resolution.", track: -1, label: "Expanded Cooperation" },
+        ],
+        diplomatic: [
+          { text: "Recommend attaching economic conditions to any deal \u2014 both sides must commit to open shipping lanes.", track: 1, label: "Economic Conditions" },
+          { text: "Propose a joint economic development zone around the islands as part of a long-term resolution.", track: 0, label: "Development Zone" },
+          { text: "Recommend a major U.S. investment commitment to the region, conditioned on a lasting peace framework.", track: -1, label: "Investment Commitment" },
+        ],
+      },
+      nsa: {
+        assertive: [
+          { text: "Recommend maintaining maximum pressure while preparing the President for the possibility of military engagement.", track: 1, label: "Maximum Pressure" },
+          { text: "Recommend creating a face-saving exit for China that doesn't compromise U.S. credibility or the Japan alliance.", track: 0, label: "Face-Saving Exit" },
+          { text: "Recommend an immediate policy reversal toward de-escalation before the situation becomes irreversible.", track: -1, label: "Policy Reversal" },
+        ],
+        moderate: [
+          { text: "Recommend the President lean toward firmness \u2014 ambiguity is no longer sufficient.", track: 1, label: "Choose Firmness" },
+          { text: "Recommend the President propose a comprehensive framework addressing security, sovereignty, and resources.", track: 0, label: "Comprehensive Framework" },
+          { text: "Recommend the President call China's leader directly to negotiate a mutual stand-down.", track: -1, label: "Direct Negotiation" },
+        ],
+        diplomatic: [
+          { text: "Recommend setting clear consequences if either side abandons the diplomatic track.", track: 1, label: "Clear Consequences" },
+          { text: "Recommend the President propose a formal long-term East China Sea stability agreement.", track: 0, label: "Stability Agreement" },
+          { text: "Recommend the President offer to permanently station a U.S. diplomatic presence focused on the dispute.", track: -1, label: "Permanent Envoy" },
+        ],
+      },
+    },
+  },
+  {
+    id: 5,
+    title: "The Decision",
+    narrativeByPath: {
+      assertive: "The standoff has reached its most dangerous point. Both sides have significant military assets in close proximity. Intelligence reports indicate that neither China nor Japan intends to start a war \u2014 but the risk of an accidental clash is extremely high. Any further escalation from the U.S. could push the situation past the point of no return.\n\nThe President is asking each NSC member for their final recommendation. This is the decision that will define the crisis \u2014 and possibly the President's legacy.",
+      moderate: "Your efforts to broker a mutual step-back are gaining traction, but fragile. China has quietly signaled it would accept a temporary freeze on military activity if it can be framed as a mutual decision rather than a Chinese concession. Japan is reluctantly willing to participate if the U.S. guarantees it won't lose administrative control.\n\nThe deal is on the table, but it needs one more push. The President is asking for final recommendations.",
+      diplomatic: "Diplomatic efforts have produced a tentative agreement: a 90-day cooling-off period with mutual withdrawal of military assets from the immediate area, establishment of a hotline between Chinese and Japanese coast guards, and a commitment to begin formal negotiations on resource-sharing in the East China Sea.\n\nBut the agreement hasn't been signed yet. Hardliners on both sides are pushing back. The President needs to decide how to close the deal.",
+    },
+    sceneType: "decision",
+    sceneAlt: "Illustration of the presidential desk with official documents awaiting a decision, the presidential seal displayed above.",
+    choices: {
+      president: {
+        assertive: [
+          { text: "Maintain the pressure. Tell China that the U.S. will not blink, and wait for them to back down.", track: 1, label: "Don't Blink" },
+          { text: "Offer China a private deal: withdraw forces simultaneously, with the U.S. brokering face-saving language for both sides.", track: 0, label: "Brokered Withdrawal" },
+          { text: "Make a dramatic public gesture \u2014 pull U.S. forces back first and challenge both sides to follow.", track: -1, label: "Lead by Example" },
+        ],
+        moderate: [
+          { text: "Push Japan to accept the deal on U.S. terms, using the alliance as leverage to close the agreement.", track: 1, label: "Leverage Alliance" },
+          { text: "Endorse the mutual freeze and commit U.S. resources to monitoring compliance from all sides.", track: 0, label: "Endorse & Monitor" },
+          { text: "Sweeten the deal by offering additional U.S. economic commitments to both sides.", track: -1, label: "Sweeten the Deal" },
+        ],
+        diplomatic: [
+          { text: "Set a 24-hour deadline for signing and warn that the U.S. will publicly back Japan if it passes.", track: 1, label: "Deadline Ultimatum" },
+          { text: "Propose a signing ceremony at a neutral location with the President presiding, raising the stakes for refusal.", track: 0, label: "Summit Signing" },
+          { text: "Offer to make the U.S. a formal guarantor of the agreement, staking American credibility on its success.", track: -1, label: "U.S. Guarantor" },
+        ],
+      },
+      secstate: {
+        assertive: [
+          { text: "Recommend rallying maximum allied pressure to isolate China and force a diplomatic resolution on our terms.", track: 1, label: "Isolate China" },
+          { text: "Propose a formula: China withdraws forces, Japan reaffirms it won't develop the islands, U.S. brokers the language.", track: 0, label: "Brokered Formula" },
+          { text: "Recommend the U.S. offer to recognize some legitimacy in China's historical claims as part of a comprehensive settlement.", track: -1, label: "Acknowledge Claims" },
+        ],
+        moderate: [
+          { text: "Recommend pressing both sides harder \u2014 the deal is close and leadership pressure will close it.", track: 1, label: "Apply Pressure" },
+          { text: "Recommend personally shuttling between capitals one final time to lock in the details.", track: 0, label: "Final Shuttle" },
+          { text: "Recommend the U.S. offer additional diplomatic concessions to China on other issues to secure agreement here.", track: -1, label: "Linkage Concessions" },
+        ],
+        diplomatic: [
+          { text: "Recommend pressing both sides to sign immediately before hardliners can organize opposition.", track: 1, label: "Press to Sign" },
+          { text: "Propose adding a long-term diplomatic mechanism \u2014 annual trilateral talks \u2014 to make the deal more attractive.", track: 0, label: "Annual Talks" },
+          { text: "Recommend the U.S. offer to take the sovereignty question to binding international arbitration as part of the deal.", track: -1, label: "Binding Arbitration" },
+        ],
+      },
+      secdef: {
+        assertive: [
+          { text: "Recommend maintaining the military standoff and preparing for a prolonged presence in the East China Sea.", track: 1, label: "Prolonged Presence" },
+          { text: "Propose a coordinated military drawdown \u2014 all three nations pull back simultaneously on an agreed timetable.", track: 0, label: "Coordinated Drawdown" },
+          { text: "Recommend unilateral U.S. military de-escalation to break the deadlock and create space for diplomacy.", track: -1, label: "Unilateral De-escalation" },
+        ],
+        moderate: [
+          { text: "Recommend using the threat of expanded U.S. military presence to push both sides to finalize the deal.", track: 1, label: "Military Leverage" },
+          { text: "Propose U.S. military monitoring of the freeze agreement as a confidence-building measure.", track: 0, label: "U.S. Monitoring" },
+          { text: "Recommend offering to reduce the U.S. military footprint in the area as a gesture of trust in the process.", track: -1, label: "Reduce Footprint" },
+        ],
+        diplomatic: [
+          { text: "Recommend maintaining a quiet military presence as insurance while the agreement is finalized.", track: 1, label: "Quiet Insurance" },
+          { text: "Propose embedding U.S. military observers with both coast guards as part of the agreement.", track: 0, label: "Military Observers" },
+          { text: "Recommend offering joint U.S.-China-Japan naval exercises as a long-term confidence-building measure.", track: -1, label: "Trilateral Exercises" },
+        ],
+      },
+      sectreas: {
+        assertive: [
+          { text: "Recommend keeping the sanctions threat active until China makes concrete, verifiable concessions.", track: 1, label: "Maintain Sanctions Threat" },
+          { text: "Propose a phased economic normalization tied to verified military de-escalation milestones.", track: 0, label: "Phased Normalization" },
+          { text: "Recommend dropping economic threats entirely and pivoting to a cooperation-based economic strategy.", track: -1, label: "Drop Threats" },
+        ],
+        moderate: [
+          { text: "Recommend using economic incentives aggressively to close the deal \u2014 put a major trade package on the table.", track: 1, label: "Aggressive Incentives" },
+          { text: "Propose creating a trilateral economic commission to manage resource development in the East China Sea.", track: 0, label: "Economic Commission" },
+          { text: "Recommend offering China expanded market access in exchange for a binding commitment to the peace framework.", track: -1, label: "Market Access Deal" },
+        ],
+        diplomatic: [
+          { text: "Recommend attaching strong economic enforcement mechanisms to the agreement.", track: 1, label: "Enforcement Mechanisms" },
+          { text: "Propose a joint development fund for the East China Sea resources, shared equitably.", track: 0, label: "Joint Development Fund" },
+          { text: "Recommend a major U.S. economic aid package to the region as a foundation for lasting peace.", track: -1, label: "Regional Aid Package" },
+        ],
+      },
+      nsa: {
+        assertive: [
+          { text: "Recommend the President prepare the American public for a prolonged standoff and its costs.", track: 1, label: "Prepare the Public" },
+          { text: "Recommend the President make one final personal appeal to China's leader with a clear off-ramp.", track: 0, label: "Final Appeal" },
+          { text: "Recommend a fundamental reassessment \u2014 the current approach is too risky and the President should pivot to de-escalation.", track: -1, label: "Fundamental Pivot" },
+        ],
+        moderate: [
+          { text: "Recommend the President personally close the deal with calls to both leaders today.", track: 1, label: "Presidential Push" },
+          { text: "Recommend formalizing the freeze into a written agreement with clear terms and a review date.", track: 0, label: "Formalize Agreement" },
+          { text: "Recommend the President accept a looser framework \u2014 perfect shouldn't be the enemy of good enough.", track: -1, label: "Good Enough Deal" },
+        ],
+        diplomatic: [
+          { text: "Recommend pressing for signature today \u2014 momentum is fragile and delay benefits the hardliners.", track: 1, label: "Sign Today" },
+          { text: "Recommend adding a presidential summit component to elevate the agreement and make it harder to refuse.", track: 0, label: "Elevate to Summit" },
+          { text: "Recommend the President offer a broad vision for a new Asia-Pacific security architecture built around this agreement.", track: -1, label: "Security Architecture" },
+        ],
+      },
+    },
+  },
+];
+
+const TERMINATION_NARRATIVE = "The situation has spiraled beyond crisis management. Following an exchange of fire between Chinese and Japanese naval vessels \u2014 triggered by a radar lock misidentified as an incoming missile \u2014 both nations have mobilized additional military forces to the East China Sea.\n\nThe United States now faces the very scenario it most wanted to avoid: the imminent possibility of being drawn into an armed conflict between two nuclear-armed powers, one of them a treaty ally. The decisions made to this point narrowed Washington's options, and the assertive posture \u2014 while intended to deter \u2014 instead contributed to a security spiral where both sides felt compelled to escalate.\n\nThis crisis has now entered a new and far more dangerous phase that would require an entirely different simulation to explore.";
+
+const TERMINATION_REFLECTION = "The path to armed conflict is rarely chosen deliberately. It often results from a series of individually reasonable decisions that collectively eliminate the space for compromise. As you reflect on your choices, consider: at which point could a different decision have opened space for de-escalation?";
+
+const OUTCOMES = {
+  hawkish: {
+    title: "A Fragile Deterrence",
+    summary: "Your assertive approach sent a clear message about U.S. resolve, and China eventually pulled back from the brink. But the crisis exposed the fragility of U.S. strategy in the region. China views the outcome as a humiliation and is already accelerating its military modernization program. Japan, emboldened by U.S. support, is less inclined to compromise. The East China Sea remains a flashpoint.\n\nThe immediate crisis is over, but you may have made the next one more likely.",
+    longTerm: "Relations with China have deteriorated significantly. Military spending in the region increases. The risk of future confrontation is higher, but U.S. alliance credibility has been reinforced.",
+  },
+  moderate: {
+    title: "A Managed Stalemate",
+    summary: "Your balanced approach prevented the worst outcomes and preserved U.S. relationships with both China and Japan. A fragile ceasefire holds, with both sides agreeing to a freeze on military activity near the disputed islands. The underlying sovereignty dispute remains unresolved, but the immediate danger has passed.\n\nThe U.S. has demonstrated it can manage crises without choosing sides \u2014 but some observers question whether this ambiguity is sustainable in the long run.",
+    longTerm: "The status quo is preserved, buying time for diplomacy. But the fundamental tensions remain, and both sides are testing the limits of the freeze. The U.S. may face this crisis again.",
+  },
+  dovish: {
+    title: "A Diplomatic Framework",
+    summary: "Your diplomatic approach produced a meaningful agreement: a 90-day cooling-off period, a coast guard hotline, and a commitment to formal negotiations on resource sharing in the East China Sea. Both China and Japan can claim some credit for the outcome, which is exactly what made it possible.\n\nHowever, the agreement is fragile. Hardliners in both countries are already criticizing their leaders for being too soft. Implementation will be the real test. Some critics in Washington argue the U.S. gave away too much leverage.",
+    longTerm: "A new diplomatic framework exists, but it needs constant attention. The sovereignty issue is deferred, not resolved. The U.S. has strengthened its role as a mediator, but some allies worry about its willingness to take firm positions.",
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// SVG ILLUSTRATIONS (with aria labels)
+// ═══════════════════════════════════════════════════════════
+
+const EastChinaSeaMap = () => (
+  React.createElement('svg', { viewBox: "0 0 500 450", role: "img", 'aria-label': "Map of the East China Sea showing the disputed Senkaku/Diaoyu Islands between China and Japan, with overlapping Air Defense Identification Zones from both countries and major shipping lanes.", style: { width: "100%", maxWidth: 500, height: "auto" }},
+    React.createElement('title', null, "East China Sea Disputed Zone Map"),
+    React.createElement('defs', null,
+      React.createElement('linearGradient', { id: "ocean", x1: "0", y1: "0", x2: "0", y2: "1" },
+        React.createElement('stop', { offset: "0%", stopColor: "#1a3a5c" }),
+        React.createElement('stop', { offset: "100%", stopColor: "#0f2440" })
+      ),
+      React.createElement('linearGradient', { id: "land", x1: "0", y1: "0", x2: "1", y2: "1" },
+        React.createElement('stop', { offset: "0%", stopColor: "#3a5a3a" }),
+        React.createElement('stop', { offset: "100%", stopColor: "#2d4a2d" })
+      ),
+      React.createElement('filter', { id: "glow" },
+        React.createElement('feGaussianBlur', { stdDeviation: "3", result: "blur" }),
+        React.createElement('feMerge', null,
+          React.createElement('feMergeNode', { 'in': "blur" }),
+          React.createElement('feMergeNode', { 'in': "SourceGraphic" })
+        )
+      )
+    ),
+    React.createElement('rect', { width: "500", height: "450", fill: "url(#ocean)", rx: "8" }),
+    React.createElement('text', { x: "250", y: "30", textAnchor: "middle", fill: "#6a8caa", fontSize: "11", fontFamily: "monospace", letterSpacing: "3" }, "EAST CHINA SEA \u2014 DISPUTED ZONE"),
+    React.createElement('path', { d: "M 0 100 L 60 80 L 100 120 L 130 100 L 150 140 L 140 200 L 150 260 L 130 320 L 100 380 L 60 420 L 0 450 Z", fill: "url(#land)", stroke: "#4a7a4a", strokeWidth: "1" }),
+    React.createElement('text', { x: "50", y: "250", fill: "#8ab88a", fontSize: "18", fontWeight: "bold", fontFamily: "serif" }, "CHINA"),
+    React.createElement('path', { d: "M 140 340 Q 160 320 170 340 Q 175 370 160 390 Q 145 380 140 340 Z", fill: "url(#land)", stroke: "#4a7a4a", strokeWidth: "1" }),
+    React.createElement('text', { x: "130", y: "410", fill: "#8ab88a", fontSize: "10", fontFamily: "serif" }, "Taiwan"),
+    React.createElement('path', { d: "M 340 60 Q 370 50 390 70 Q 400 100 380 130 Q 360 120 340 130 Q 330 100 340 60 Z", fill: "url(#land)", stroke: "#4a7a4a", strokeWidth: "1" }),
+    React.createElement('text', { x: "345", y: "80", fill: "#8ab88a", fontSize: "10", fontFamily: "serif" }, "Kyushu"),
+    React.createElement('ellipse', { cx: "360", cy: "180", rx: "8", ry: "15", fill: "url(#land)", stroke: "#4a7a4a", strokeWidth: "0.5" }),
+    React.createElement('ellipse', { cx: "340", cy: "220", rx: "5", ry: "10", fill: "url(#land)", stroke: "#4a7a4a", strokeWidth: "0.5" }),
+    React.createElement('ellipse', { cx: "310", cy: "260", rx: "5", ry: "8", fill: "url(#land)", stroke: "#4a7a4a", strokeWidth: "0.5" }),
+    React.createElement('text', { x: "375", y: "185", fill: "#8ab88a", fontSize: "9", fontFamily: "serif" }, "Okinawa"),
+    React.createElement('path', { d: "M 160 100 L 400 50 L 420 250 L 300 320 L 160 300 Z", fill: "rgba(74,144,217,0.08)", stroke: "#4a90d9", strokeWidth: "1", strokeDasharray: "8 4" }),
+    React.createElement('text', { x: "310", y: "300", fill: "#4a90d9", fontSize: "9", fontFamily: "monospace", opacity: "0.8" }, "JAPAN ADIZ"),
+    React.createElement('path', { d: "M 100 80 L 350 60 L 370 220 L 200 300 L 100 280 Z", fill: "rgba(217,74,74,0.08)", stroke: "#d94a4a", strokeWidth: "1", strokeDasharray: "8 4" }),
+    React.createElement('text', { x: "115", y: "130", fill: "#d94a4a", fontSize: "9", fontFamily: "monospace", opacity: "0.8" }, "CHINA ADIZ (2013)"),
+    React.createElement('g', { filter: "url(#glow)" },
+      React.createElement('circle', { cx: "250", cy: "210", r: "6", fill: "#c4a35a" }),
+      React.createElement('circle', { cx: "240", cy: "200", r: "3", fill: "#c4a35a" }),
+      React.createElement('circle', { cx: "260", cy: "205", r: "3", fill: "#c4a35a" }),
+      React.createElement('circle', { cx: "245", cy: "218", r: "2.5", fill: "#c4a35a" }),
+      React.createElement('circle', { cx: "258", cy: "215", r: "2", fill: "#c4a35a" })
+    ),
+    React.createElement('line', { x1: "268", y1: "210", x2: "310", y2: "210", stroke: "#c4a35a", strokeWidth: "0.5", strokeDasharray: "3 2" }),
+    React.createElement('text', { x: "315", y: "206", fill: "#c4a35a", fontSize: "10", fontWeight: "bold", fontFamily: "serif" }, "Senkaku (JP)"),
+    React.createElement('text', { x: "315", y: "218", fill: "#c4a35a", fontSize: "10", fontWeight: "bold", fontFamily: "serif" }, "Diaoyu (CN)"),
+    React.createElement('rect', { x: "170", y: "148", width: "110", height: "20", rx: "3", fill: "rgba(196,163,90,0.15)", stroke: "#c4a35a", strokeWidth: "0.5" }),
+    React.createElement('text', { x: "225", y: "162", textAnchor: "middle", fill: "#c4a35a", fontSize: "8", fontFamily: "monospace", letterSpacing: "1" }, "OVERLAP ZONE"),
+    React.createElement('text', { x: "20", y: "440", fill: "#4a6a8a", fontSize: "8", fontFamily: "monospace" }, "25\u00b0N \u2014 30\u00b0N | 122\u00b0E \u2014 130\u00b0E"),
+    React.createElement('path', { d: "M 80 380 Q 200 300 350 150", fill: "none", stroke: "#4a6a8a", strokeWidth: "0.8", strokeDasharray: "12 6", opacity: "0.5" }),
+    React.createElement('text', { x: "170", y: "340", fill: "#4a6a8a", fontSize: "8", fontFamily: "monospace", transform: "rotate(-35 170 340)" }, "Major Shipping Lane")
+  )
+);
+
+const SCENE_ALT = {
+  briefing: "Illustration of the White House Situation Room with silhouettes of officials seated around a conference table.",
+  escalation: "Illustration of two naval vessels approaching each other in the East China Sea with a warning symbol.",
+  crisis: "Collision alert: two coast guard vessels have collided near the disputed islands.",
+  crossroads: "A critical decision point with three diverging paths: Escalate, Hold, and De-escalate.",
+  decision: "The presidential desk with official documents awaiting a final decision.",
+  terminated: "Crisis escalation warning: armed conflict is imminent. Simulation terminated.",
+};
+
+const SceneIllustration = ({ type }) => {
+  const altText = SCENE_ALT[type] || "Scene illustration";
+  const svgProps = { viewBox: "0 0 400 200", role: "img", 'aria-label': altText, style: { width: "100%", maxWidth: 400, height: "auto", display: "block", margin: "0 auto" }};
+  const e = React.createElement;
+
+  if (type === "briefing") return e('svg', svgProps,
+    e('title', null, altText),
+    e('rect', { width: 400, height: 200, fill: "#0d1b2a", rx: 6 }),
+    e('ellipse', { cx: 200, cy: 140, rx: 150, ry: 40, fill: "#1a2d42", stroke: "#2a4060", strokeWidth: 1 }),
+    ...[140,180,220,260].map((x,i) => e('g', {key:i}, e('circle',{cx:x,cy:100,r:10,fill:"#2a4060"}), e('rect',{x:x-8,y:110,width:16,height:20,rx:3,fill:"#2a4060"}))),
+    e('circle', { cx: 200, cy: 50, r: 20, fill: "none", stroke: "#c4a35a", strokeWidth: 1, opacity: 0.5 }),
+    e('text', { x: 200, y: 54, textAnchor: "middle", fill: "#c4a35a", fontSize: 8, opacity: 0.5 }, "NSC"),
+    e('text', { x: 200, y: 185, textAnchor: "middle", fill: "#4a6a8a", fontSize: 10, fontFamily: "monospace" }, "THE SITUATION ROOM")
+  );
+
+  if (type === "escalation") return e('svg', svgProps,
+    e('title', null, altText),
+    e('rect', { width: 400, height: 200, fill: "#0d1b2a", rx: 6 }),
+    e('rect', { x: 0, y: 100, width: 400, height: 100, fill: "#0f2440" }),
+    e('path', { d: "M 0 120 Q 50 110 100 120 Q 150 130 200 120 Q 250 110 300 120 Q 350 130 400 120", fill: "none", stroke: "#1a3a5c", strokeWidth: 1 }),
+    e('g', { transform: "translate(100,100)" },
+      e('rect', { x: -20, y: -5, width: 40, height: 10, rx: 2, fill: "#4a6a8a" }),
+      e('rect', { x: -5, y: -12, width: 2, height: 8, fill: "#6a8aaa" }),
+      e('polygon', { points: "-5,-12 15,-8 -5,-8", fill: "#d94a4a", opacity: 0.3 })
+    ),
+    e('g', { transform: "translate(300,105)" },
+      e('rect', { x: -20, y: -5, width: 40, height: 10, rx: 2, fill: "#4a6a8a" }),
+      e('rect', { x: 5, y: -12, width: 2, height: 8, fill: "#6a8aaa" }),
+      e('polygon', { points: "7,-12 -13,-8 7,-8", fill: "#4a90d9", opacity: 0.3 })
+    ),
+    e('text', { x: 200, y: 80, textAnchor: "middle", fill: "#d94a4a", fontSize: 28, opacity: 0.6, 'aria-hidden': "true" }, "\u26a0"),
+    e('text', { x: 200, y: 185, textAnchor: "middle", fill: "#4a6a8a", fontSize: 10, fontFamily: "monospace" }, "NAVAL FORCES CONVERGING")
+  );
+
+  if (type === "crisis") return e('svg', svgProps,
+    e('title', null, altText),
+    e('rect', { width: 400, height: 200, fill: "#1a0a0a", rx: 6 }),
+    e('rect', { x: 0, y: 0, width: 400, height: 200, fill: "#d94a4a", opacity: 0.05, rx: 6 }),
+    e('g', { transform: "translate(170,90)" }, e('rect', { x: -25, y: -5, width: 40, height: 10, rx: 2, fill: "#4a6a8a", transform: "rotate(15)" })),
+    e('g', { transform: "translate(230,90)" }, e('rect', { x: -15, y: -5, width: 40, height: 10, rx: 2, fill: "#4a6a8a", transform: "rotate(-15)" })),
+    e('circle', { cx: 200, cy: 85, r: 15, fill: "none", stroke: "#d94a4a", strokeWidth: 2, opacity: 0.6 }),
+    e('circle', { cx: 200, cy: 85, r: 25, fill: "none", stroke: "#d94a4a", strokeWidth: 1, opacity: 0.3 }),
+    e('circle', { cx: 200, cy: 85, r: 35, fill: "none", stroke: "#d94a4a", strokeWidth: 0.5, opacity: 0.15 }),
+    e('rect', { x: 100, y: 30, width: 200, height: 24, rx: 3, fill: "#d94a4a", opacity: 0.2 }),
+    e('text', { x: 200, y: 46, textAnchor: "middle", fill: "#d94a4a", fontSize: 12, fontFamily: "monospace", letterSpacing: 3 }, "\u26a0 COLLISION ALERT \u26a0"),
+    e('text', { x: 200, y: 150, textAnchor: "middle", fill: "#8a6a6a", fontSize: 10, fontFamily: "serif" }, "Coast Guard Vessels Collide Near Disputed Islands"),
+    e('text', { x: 200, y: 185, textAnchor: "middle", fill: "#4a6a8a", fontSize: 10, fontFamily: "monospace" }, "FLASH TRAFFIC \u2014 EYES ONLY")
+  );
+
+  if (type === "crossroads") return e('svg', svgProps,
+    e('title', null, altText),
+    e('rect', { width: 400, height: 200, fill: "#0d1b2a", rx: 6 }),
+    e('path', { d: "M 200 180 L 200 100", stroke: "#c4a35a", strokeWidth: 2 }),
+    e('path', { d: "M 200 100 L 100 30", stroke: "#d94a4a", strokeWidth: 2, strokeDasharray: "6 3" }),
+    e('path', { d: "M 200 100 L 200 30", stroke: "#c4a35a", strokeWidth: 2, strokeDasharray: "6 3" }),
+    e('path', { d: "M 200 100 L 300 30", stroke: "#4a90d9", strokeWidth: 2, strokeDasharray: "6 3" }),
+    e('circle', { cx: 200, cy: 100, r: 5, fill: "#c4a35a" }),
+    e('text', { x: 70, y: 25, textAnchor: "middle", fill: "#d94a4a", fontSize: 10, fontFamily: "monospace" }, "ESCALATE"),
+    e('text', { x: 200, y: 20, textAnchor: "middle", fill: "#c4a35a", fontSize: 10, fontFamily: "monospace" }, "HOLD"),
+    e('text', { x: 330, y: 25, textAnchor: "middle", fill: "#4a90d9", fontSize: 10, fontFamily: "monospace" }, "DE-ESCALATE"),
+    e('text', { x: 200, y: 185, textAnchor: "middle", fill: "#4a6a8a", fontSize: 10, fontFamily: "monospace" }, "CRITICAL DECISION POINT")
+  );
+
+  if (type === "decision") return e('svg', svgProps,
+    e('title', null, altText),
+    e('rect', { width: 400, height: 200, fill: "#0d1b2a", rx: 6 }),
+    e('rect', { x: 150, y: 80, width: 100, height: 60, rx: 4, fill: "#1a2d42", stroke: "#c4a35a", strokeWidth: 1 }),
+    e('rect', { x: 160, y: 70, width: 80, height: 15, rx: 3, fill: "#1a2d42", stroke: "#c4a35a", strokeWidth: 0.5 }),
+    e('circle', { cx: 200, cy: 105, r: 15, fill: "none", stroke: "#c4a35a", strokeWidth: 1 }),
+    e('text', { x: 200, y: 109, textAnchor: "middle", fill: "#c4a35a", fontSize: 7, fontFamily: "serif" }, "POTUS"),
+    e('rect', { x: 170, y: 145, width: 25, height: 30, rx: 2, fill: "#2a4060" }),
+    e('rect', { x: 200, y: 145, width: 25, height: 30, rx: 2, fill: "#2a4060" }),
+    e('text', { x: 200, y: 45, textAnchor: "middle", fill: "#c4a35a", fontSize: 12, fontFamily: "serif", letterSpacing: 2 }, "FINAL RECOMMENDATION"),
+    e('text', { x: 200, y: 185, textAnchor: "middle", fill: "#4a6a8a", fontSize: 10, fontFamily: "monospace" }, "THE PRESIDENT DECIDES")
+  );
+
+  if (type === "terminated") return e('svg', svgProps,
+    e('title', null, altText),
+    e('rect', { width: 400, height: 200, fill: "#1a0505", rx: 6 }),
+    e('rect', { x: 0, y: 0, width: 400, height: 200, fill: "#d94a4a", opacity: 0.08, rx: 6 }),
+    ...[0,1,2,3,4,5,6,7,8,9,10,11,12,13].map(i => e('rect', { key: i, x: i*30-5, y: 0, width: 15, height: 200, fill: "#d94a4a", opacity: 0.03, transform: "skewX(-20)" })),
+    e('text', { x: 200, y: 80, textAnchor: "middle", fill: "#d94a4a", fontSize: 40, 'aria-hidden': "true" }, "\u26a0"),
+    e('text', { x: 200, y: 120, textAnchor: "middle", fill: "#d94a4a", fontSize: 16, fontFamily: "monospace", letterSpacing: 4 }, "CRISIS ESCALATED"),
+    e('text', { x: 200, y: 145, textAnchor: "middle", fill: "#8a4a4a", fontSize: 10, fontFamily: "monospace" }, "ARMED CONFLICT IMMINENT"),
+    e('text', { x: 200, y: 185, textAnchor: "middle", fill: "#4a3030", fontSize: 10, fontFamily: "monospace" }, "SIMULATION TERMINATED")
+  );
+
+  return null;
+};
+
+// ═══════════════════════════════════════════════════════════
+// ACCESSIBLE COMPONENTS
+// ═══════════════════════════════════════════════════════════
+
+const RolePortrait = ({ role, size = 80, showLabel = true }) => {
+  const r = ROLES[role];
+  return React.createElement('div', { style: { textAlign: "center" } },
+    React.createElement('div', {
+      'aria-hidden': "true",
+      style: {
+        width: size, height: size, borderRadius: "50%",
+        background: "linear-gradient(135deg, " + r.color + "22, " + r.color + "44)",
+        border: "2px solid " + r.color,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: size * 0.4, color: r.color, margin: "0 auto",
+      }
+    }, r.icon),
+    showLabel && React.createElement('div', {
+      style: { marginTop: 6, fontSize: 11, color: r.color, fontFamily: "monospace", letterSpacing: 1 }
+    }, r.shortTitle.toUpperCase())
+  );
+};
+
+const MoodBadge = ({ mood }) => {
+  const config = {
+    supportive: { color: "#4ac4a3", label: "Supportive" },
+    neutral: { color: "#c4a35a", label: "Neutral" },
+    agitated: { color: "#d94a4a", label: "Concerned" },
+  };
+  const c = config[mood] || config.neutral;
+  return React.createElement('span', {
+    role: "status",
+    'aria-label': "Mood: " + c.label,
+    style: { fontSize: 10, color: c.color, fontFamily: "monospace", display: "inline-flex", alignItems: "center", gap: 4 }
+  },
+    React.createElement('span', { 'aria-hidden': "true", style: { fontSize: 8 } }, "\u25CF"),
+    " " + c.label
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+// MAIN APPLICATION
+// ═══════════════════════════════════════════════════════════
+
+function App() {
+  const [screen, setScreen] = useState("title");
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [currentRound, setCurrentRound] = useState(0);
+  const [choices, setChoices] = useState([]);
+  const [showingFeedback, setShowingFeedback] = useState(false);
+  const [lastChoice, setLastChoice] = useState(null);
+  const [fadeIn, setFadeIn] = useState(true);
+  const mainRef = useRef(null);
+  const announceRef = useRef(null);
+
+  const totalScore = useMemo(() => choices.reduce((a, b) => a + b, 0), [choices]);
+
+  const getPath = useCallback(() => {
+    if (totalScore >= 2) return "assertive";
+    if (totalScore <= -2) return "diplomatic";
+    return "moderate";
+  }, [totalScore]);
+
+  // Focus management: move focus to main on screen change
+  const announce = useCallback((msg) => {
+    if (announceRef.current) {
+      announceRef.current.textContent = "";
+      setTimeout(() => { if (announceRef.current) announceRef.current.textContent = msg; }, 100);
+    }
+  }, []);
+
+  const transition = useCallback((callback, announcement) => {
+    setFadeIn(false);
+    setTimeout(() => {
+      callback();
+      setFadeIn(true);
+      setTimeout(() => {
+        if (mainRef.current) { mainRef.current.focus(); }
+        if (announcement) announce(announcement);
+      }, 50);
+    }, 300);
+  }, [announce]);
+
+  const handleRoleSelect = (roleId) => {
+    transition(() => {
+      setSelectedRole(roleId);
+      setScreen("briefing");
+    }, "You selected " + ROLES[roleId].title + ". Reading your briefing.");
+  };
+
+  const handleChoice = (choice) => {
+    const newChoices = [...choices, choice.track];
+    setChoices(newChoices);
+    setLastChoice(choice);
+    setShowingFeedback(true);
+    announce("You chose: " + choice.label + ". Your recommendation has been recorded.");
+  };
+
+  const handleContinue = () => {
+    const newScore = choices.reduce((a, b) => a + b, 0);
+    const nextRound = currentRound + 1;
+
+    if (newScore >= 3 && currentRound >= 2) {
+      transition(() => {
+        setShowingFeedback(false);
+        setScreen("terminated");
+      }, "The crisis has escalated to armed conflict. Simulation terminated.");
+      return;
+    }
+
+    if (nextRound >= ROUNDS.length) {
+      transition(() => {
+        setShowingFeedback(false);
+        setScreen("outcome");
+      }, "Simulation complete. Viewing your outcome.");
+      return;
+    }
+
+    transition(() => {
+      setShowingFeedback(false);
+      setCurrentRound(nextRound);
+    }, "Round " + (nextRound + 1) + ": " + ROUNDS[nextRound].title);
+  };
+
+  const handleRestart = () => {
+    transition(() => {
+      setScreen("title");
+      setSelectedRole(null);
+      setCurrentRound(0);
+      setChoices([]);
+      setShowingFeedback(false);
+      setLastChoice(null);
+    }, "Simulation restarted. Choose a role to begin.");
+  };
+
+  // ─── Styles ───
+  const S = {
+    container: {
+      minHeight: "100vh",
+      background: "linear-gradient(180deg, #080e18 0%, #0d1b2a 50%, #0a1425 100%)",
+      color: "#d0d8e0",
+      fontFamily: "Georgia, 'Times New Roman', serif",
+      padding: "20px",
+      opacity: fadeIn ? 1 : 0,
+      transition: "opacity 0.3s ease",
+    },
+    card: {
+      background: "linear-gradient(135deg, #111d2e, #162236)",
+      border: "1px solid #1e3350",
+      borderRadius: 8,
+      padding: "24px",
+      marginBottom: 16,
+    },
+    btn: {
+      padding: "14px 24px",
+      borderRadius: 6,
+      border: "none",
+      cursor: "pointer",
+      fontFamily: "Georgia, serif",
+      fontSize: 15,
+      transition: "all 0.2s ease",
+      width: "100%",
+      textAlign: "left",
+      lineHeight: 1.5,
+      background: "none",
+    },
+    maxW: { maxWidth: 760, margin: "0 auto" },
+    // Improved contrast colors (WCAG AA compliant against #0d1b2a-ish backgrounds)
+    textPrimary: "#e0e8f0",   // body text — ~13:1 ratio
+    textSecondary: "#a8b8cc",  // secondary text — ~7:1 ratio
+    textMuted: "#7a92ad",      // labels — ~4.6:1 ratio (AA for normal text)
+    gold: "#d4b96a",           // gold accent — ~8:1 ratio
+  };
+
+  const e = React.createElement;
+
+  // ─── ARIA LIVE REGION ───
+  const liveRegion = e('div', {
+    ref: announceRef,
+    'aria-live': "polite",
+    'aria-atomic': "true",
+    className: "sr-only",
+    role: "status",
+  });
+
+  // ─── TITLE SCREEN ───
+  if (screen === "title") {
+    return e('div', { style: S.container },
+      liveRegion,
+      e('main', { id: "main-content", ref: mainRef, tabIndex: -1, style: { outline: "none", ...S.maxW, textAlign: "center", paddingTop: 60 } },
+        e('p', { style: { fontSize: 11, color: S.textMuted, fontFamily: "monospace", letterSpacing: 4, marginBottom: 20 } }, "NATIONAL SECURITY COUNCIL SIMULATION"),
+        e('h1', { style: { fontSize: 36, color: S.gold, margin: "0 0 8px", fontWeight: "normal", letterSpacing: 1 } }, "Dispute in the East China Sea"),
+        e('p', { style: { fontSize: 16, color: S.textSecondary, margin: "0 0 40px" } }, "September 2016 \u2014 A Crisis Simulation"),
+        e('div', { style: { ...S.card, textAlign: "left", marginBottom: 30 } },
+          e('p', { style: { lineHeight: 1.8, margin: "0 0 16px", color: S.textPrimary } },
+            "Tensions between China and Japan have reached a dangerous peak over the disputed Senkaku/Diaoyu Islands in the East China Sea. A Chinese naval frigate has entered the disputed zone for the first time. Japanese fighters have locked weapons radar on Chinese military aircraft. Hundreds of Chinese fishing vessels, escorted by law enforcement ships, have appeared near the islands."
+          ),
+          e('p', { style: { lineHeight: 1.8, margin: "0 0 16px", color: S.textPrimary } },
+            "The United States has a treaty commitment to defend Japan \u2014 but it also has vital economic and strategic interests in stable relations with China. A miscalculation by either side could draw the U.S. into an armed conflict between Asia's two largest powers."
+          ),
+          e('p', { style: { lineHeight: 1.8, margin: 0, color: S.textPrimary } },
+            "The President has convened the National Security Council. You will play a key role in shaping America's response to this crisis."
+          ),
+        ),
+        e('button', {
+          onClick: () => transition(() => setScreen("roleSelect"), "Choose your role on the National Security Council."),
+          style: { ...S.btn, background: "linear-gradient(135deg, #c4a35a, #a8893e)", color: "#0d1b2a", fontWeight: "bold", fontSize: 16, textAlign: "center", width: "auto", padding: "16px 48px", display: "inline-block" },
+        }, "Begin Simulation")
+      )
+    );
+  }
+
+  // ─── ROLE SELECT ───
+  if (screen === "roleSelect") {
+    return e('div', { style: S.container },
+      liveRegion,
+      e('main', { id: "main-content", ref: mainRef, tabIndex: -1, style: { outline: "none", ...S.maxW } },
+        e('div', { style: { textAlign: "center", marginBottom: 30 } },
+          e('h1', { style: { fontSize: 11, color: S.textMuted, fontFamily: "monospace", letterSpacing: 3, marginBottom: 8 } }, "SELECT YOUR ROLE"),
+          e('p', { style: { color: S.textSecondary, fontSize: 14, margin: 0 } }, "Choose which member of the National Security Council you will play.")
+        ),
+        e('div', { role: "list", 'aria-label': "Available roles", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 } },
+          ...ROLE_ORDER.map((roleId) => {
+            const r = ROLES[roleId];
+            return e('button', {
+              key: roleId,
+              role: "listitem",
+              onClick: () => handleRoleSelect(roleId),
+              'aria-label': r.title + ": " + r.description,
+              style: { ...S.card, cursor: "pointer", textAlign: "center", padding: "28px 20px", border: "1px solid " + r.color + "33", transition: "all 0.2s ease", background: "linear-gradient(135deg, #111d2e, #162236)" },
+              onMouseEnter: (ev) => { ev.currentTarget.style.borderColor = r.color; ev.currentTarget.style.transform = "translateY(-3px)"; },
+              onMouseLeave: (ev) => { ev.currentTarget.style.borderColor = r.color + "33"; ev.currentTarget.style.transform = "translateY(0)"; },
+            },
+              e(RolePortrait, { role: roleId, size: 70, showLabel: false }),
+              e('div', { style: { fontSize: 16, color: r.color, marginTop: 12, fontWeight: "bold" } }, r.title),
+              e('div', { style: { fontSize: 13, color: S.textSecondary, marginTop: 8, lineHeight: 1.5 } }, r.description)
+            );
+          })
+        )
+      )
+    );
+  }
+
+  // ─── BRIEFING ───
+  if (screen === "briefing") {
+    const role = ROLES[selectedRole];
+    return e('div', { style: S.container },
+      liveRegion,
+      e('main', { id: "main-content", ref: mainRef, tabIndex: -1, style: { outline: "none", ...S.maxW } },
+        e('div', { style: { textAlign: "center", marginBottom: 20 } },
+          e(RolePortrait, { role: selectedRole, size: 90 }),
+          e('h1', { style: { color: role.color, fontSize: 24, margin: "16px 0 4px", fontWeight: "normal" } }, role.title),
+          e('p', { style: { fontSize: 11, color: S.textMuted, fontFamily: "monospace", letterSpacing: 2 } }, "YOUR BRIEFING")
+        ),
+        e('section', { 'aria-label': "Role briefing", style: S.card },
+          ...role.briefing.split("\n").map((para, i) => {
+            if (para.startsWith("\u2022")) return e('div', { key: i, style: { color: S.textPrimary, lineHeight: 1.7, paddingLeft: 16, margin: "4px 0" } }, para);
+            return para.trim() ? e('p', { key: i, style: { color: S.textPrimary, lineHeight: 1.8, margin: "0 0 14px" } }, para) : null;
+          })
+        ),
+        e('section', { 'aria-label': "Map of the disputed zone", style: { ...S.card, textAlign: "center" } },
+          e('h2', { style: { fontSize: 11, color: S.textMuted, fontFamily: "monospace", letterSpacing: 2, marginBottom: 16, fontWeight: "normal" } }, "THE DISPUTED ZONE"),
+          e(EastChinaSeaMap)
+        ),
+        e('div', { style: { textAlign: "center", marginTop: 20 } },
+          e('button', {
+            onClick: () => transition(() => setScreen("round"), "Round 1: The NSC Convenes."),
+            style: { ...S.btn, background: "linear-gradient(135deg, #c4a35a, #a8893e)", color: "#0d1b2a", fontWeight: "bold", fontSize: 15, textAlign: "center", width: "auto", padding: "14px 40px", display: "inline-block" },
+          }, "Enter the Situation Room \u2192")
+        )
+      )
+    );
+  }
+
+  // ─── ROUND ───
+  if (screen === "round") {
+    const round = ROUNDS[currentRound];
+    const path = getPath();
+    let narrative = round.narrative;
+    if (round.narrativeByPath) narrative = round.narrativeByPath[path];
+    let roundChoices;
+    if (round.choices[selectedRole]) {
+      if (Array.isArray(round.choices[selectedRole])) {
+        roundChoices = round.choices[selectedRole];
+      } else {
+        roundChoices = round.choices[selectedRole][path];
+      }
+    }
+    const reactors = getNpcReactors(selectedRole, currentRound);
+    let npcReactions = null;
+    if (choices.length > 0) {
+      const lastTrack = choices[choices.length - 1];
+      npcReactions = reactors.map((npcId) => {
+        const npc = ROLES[npcId];
+        const mood = getNpcMood(npc.alignment, lastTrack);
+        const dialogues = NPC_DIALOGUE[npcId][mood];
+        const dialogueIndex = Math.min(currentRound - 1, dialogues.length - 1);
+        return { ...npc, mood, dialogue: dialogues[Math.max(0, dialogueIndex)] };
+      });
+    }
+
+    const trackLabel = (t) => t === 1 ? "Assertive" : t === -1 ? "Diplomatic" : "Moderate";
+
+    return e('div', { style: S.container },
+      liveRegion,
+      e('main', { id: "main-content", ref: mainRef, tabIndex: -1, style: { outline: "none", ...S.maxW } },
+        // Header
+        e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
+          e('div', null,
+            e('p', { style: { fontSize: 11, color: S.textMuted, fontFamily: "monospace", letterSpacing: 2, margin: 0 } }, "ROUND " + round.id + " OF 5"),
+            e('h1', { style: { color: S.gold, fontSize: 22, margin: "4px 0 0", fontWeight: "normal" } }, round.title)
+          ),
+          e(RolePortrait, { role: selectedRole, size: 50 })
+        ),
+        // Progress bar
+        e('div', { role: "progressbar", 'aria-valuenow': currentRound + 1, 'aria-valuemin': 1, 'aria-valuemax': ROUNDS.length, 'aria-label': "Simulation progress: round " + (currentRound + 1) + " of " + ROUNDS.length, style: { height: 3, background: "#1e3350", borderRadius: 2, marginBottom: 24 } },
+          e('div', { style: { height: "100%", borderRadius: 2, background: "linear-gradient(90deg, #c4a35a, " + (totalScore >= 2 ? "#d94a4a" : totalScore <= -2 ? "#4a90d9" : "#c4a35a") + ")", width: ((currentRound + 1) / ROUNDS.length * 100) + "%", transition: "width 0.5s ease" } })
+        ),
+        // Scene
+        e('div', { style: { marginBottom: 20 } }, e(SceneIllustration, { type: round.sceneType })),
+        // Narrative
+        e('section', { 'aria-label': "Situation update", style: S.card },
+          e('h2', { style: { fontSize: 11, color: S.gold, fontFamily: "monospace", letterSpacing: 2, marginBottom: 12, fontWeight: "normal" } }, "SITUATION UPDATE"),
+          ...narrative.split("\n").map((para, i) => para.trim() ? e('p', { key: i, style: { color: S.textPrimary, lineHeight: 1.8, margin: "0 0 12px" } }, para) : null)
+        ),
+        // NPC Reactions
+        npcReactions && !showingFeedback && e('section', { 'aria-label': "NSC member reactions", style: { marginBottom: 16 } },
+          e('h2', { style: { fontSize: 11, color: S.textMuted, fontFamily: "monospace", letterSpacing: 2, marginBottom: 10, fontWeight: "normal" } }, "NSC MEMBER REACTIONS"),
+          ...npcReactions.map((npc, i) => e('div', {
+            key: i,
+            style: { ...S.card, display: "flex", gap: 16, alignItems: "flex-start", borderColor: npc.color + "22", padding: "16px 20px" }
+          },
+            e('div', { style: { flexShrink: 0 } }, e(RolePortrait, { role: npc.id, size: 44, showLabel: false })),
+            e('div', { style: { flex: 1 } },
+              e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
+                e('span', { style: { color: npc.color, fontSize: 13, fontWeight: "bold" } }, npc.shortTitle),
+                e(MoodBadge, { mood: npc.mood })
+              ),
+              e('p', { style: { margin: 0, color: S.textSecondary, fontSize: 14, lineHeight: 1.6, fontStyle: "italic" } }, "\u201c" + npc.dialogue + "\u201d")
+            )
+          ))
+        ),
+        // Choices or Feedback
+        !showingFeedback ? e('section', { 'aria-label': "Your recommendation options" },
+          e('h2', { style: { fontSize: 11, color: S.gold, fontFamily: "monospace", letterSpacing: 2, marginBottom: 12, fontWeight: "normal" } }, "YOUR RECOMMENDATION"),
+          roundChoices && roundChoices.map((choice, i) => e('button', {
+            key: i,
+            onClick: () => handleChoice(choice),
+            'aria-label': "Option " + String.fromCharCode(65 + i) + ": " + choice.label + ". " + choice.text,
+            style: { ...S.btn, ...S.card, padding: "18px 20px", display: "block", marginBottom: 10, width: "100%", cursor: "pointer" },
+            onMouseEnter: (ev) => { ev.currentTarget.style.borderColor = "#c4a35a"; ev.currentTarget.style.transform = "translateX(4px)"; },
+            onMouseLeave: (ev) => { ev.currentTarget.style.borderColor = "#1e3350"; ev.currentTarget.style.transform = "translateX(0)"; },
+          },
+            e('div', { style: { fontSize: 11, color: S.gold, fontFamily: "monospace", marginBottom: 6 } }, "OPTION " + String.fromCharCode(65 + i) + ": " + choice.label),
+            e('div', { style: { color: S.textPrimary, lineHeight: 1.6 } }, choice.text)
+          ))
+        ) : e('section', { 'aria-label': "Recommendation recorded", style: { ...S.card, borderColor: S.gold + "33" } },
+          e('h2', { style: { fontSize: 11, color: S.gold, fontFamily: "monospace", letterSpacing: 2, marginBottom: 10, fontWeight: "normal" } }, "YOUR RECOMMENDATION HAS BEEN RECORDED"),
+          e('p', { style: { color: S.textPrimary, lineHeight: 1.6, margin: "0 0 6px" } },
+            e('strong', { style: { color: S.gold } }, lastChoice.label + ": "),
+            lastChoice.text
+          ),
+          e('p', { style: { color: S.textSecondary, fontSize: 13, margin: "12px 0 16px", lineHeight: 1.5 } },
+            lastChoice.track === 1 ? "This assertive recommendation will send a strong signal \u2014 but may narrow your options going forward."
+            : lastChoice.track === -1 ? "This diplomatic recommendation preserves flexibility \u2014 but some may see it as insufficient."
+            : "This balanced recommendation keeps options open \u2014 but risks satisfying neither hawks nor doves."
+          ),
+          e('button', {
+            onClick: handleContinue,
+            style: { ...S.btn, background: "linear-gradient(135deg, #c4a35a, #a8893e)", color: "#0d1b2a", fontWeight: "bold", textAlign: "center", width: "auto", padding: "12px 32px" },
+          }, "Continue \u2192")
+        )
+      )
+    );
+  }
+
+  // ─── TERMINATED ───
+  if (screen === "terminated") {
+    const trackLabel = (t) => t === 1 ? "Assertive" : t === -1 ? "Diplomatic" : "Moderate";
+    return e('div', { style: S.container },
+      liveRegion,
+      e('main', { id: "main-content", ref: mainRef, tabIndex: -1, style: { outline: "none", ...S.maxW } },
+        e('div', { style: { textAlign: "center", marginBottom: 20 } },
+          e('p', { style: { fontSize: 11, color: "#d94a4a", fontFamily: "monospace", letterSpacing: 3 } }, "SIMULATION TERMINATED"),
+          e('h1', { style: { color: "#d94a4a", fontSize: 26, margin: "8px 0", fontWeight: "normal" } }, "Escalation to Armed Conflict"),
+        ),
+        e(SceneIllustration, { type: "terminated" }),
+        e('section', { 'aria-label': "Termination briefing", style: { ...S.card, marginTop: 20, borderColor: "#d94a4a22" } },
+          ...TERMINATION_NARRATIVE.split("\n").map((para, i) => para.trim() ? e('p', { key: i, style: { color: S.textPrimary, lineHeight: 1.8, margin: "0 0 14px" } }, para) : null),
+          e('p', { style: { color: "#d94a4a", textAlign: "center", fontFamily: "monospace", margin: "20px 0 14px" } }, "\u2014 SIMULATION ENDED \u2014"),
+          e('p', { style: { color: S.gold, lineHeight: 1.8, margin: 0 } },
+            e('strong', null, "Reflection: "),
+            TERMINATION_REFLECTION
+          )
+        ),
+        e('section', { 'aria-label': "Your decision path", style: { ...S.card, borderColor: S.gold + "33" } },
+          e('h2', { style: { fontSize: 11, color: S.gold, fontFamily: "monospace", letterSpacing: 2, marginBottom: 10, fontWeight: "normal" } }, "YOUR DECISION PATH"),
+          e('div', { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+            ...choices.map((c, i) => e('div', { key: i, style: {
+              padding: "6px 14px", borderRadius: 4, fontSize: 12, fontFamily: "monospace",
+              background: c === 1 ? "#d94a4a22" : c === -1 ? "#4a90d922" : "#c4a35a22",
+              color: c === 1 ? "#ef6b6b" : c === -1 ? "#6ab0ef" : S.gold,
+              border: "1px solid " + (c === 1 ? "#d94a4a44" : c === -1 ? "#4a90d944" : "#c4a35a44"),
+            } }, "R" + (i+1) + ": " + trackLabel(c)))
+          )
+        ),
+        e('section', { 'aria-label': "Next steps", style: { ...S.card, borderColor: S.gold + "33", textAlign: "center" } },
+          e('p', { style: { color: S.gold, margin: "0 0 8px", fontSize: 14, fontWeight: "bold" } }, "Proceed to Blackboard to complete your reflection journal."),
+          e('p', { style: { color: S.textSecondary, margin: 0, fontSize: 13 } }, "Consider: At which point could a different decision have changed the outcome?")
+        ),
+        e('div', { style: { marginTop: 16 } },
+          e('button', {
+            onClick: handleRestart,
+            style: { ...S.btn, background: "linear-gradient(135deg, #1e3350, #162540)", color: S.gold, border: "1px solid " + S.gold + "33", textAlign: "center", width: "100%", cursor: "pointer" },
+          }, "Play Again as a Different Role")
+        )
+      )
+    );
+  }
+
+  // ─── OUTCOME ───
+  if (screen === "outcome") {
+    const path = getPath();
+    const outcomeKey = path === "assertive" ? "hawkish" : path === "diplomatic" ? "dovish" : "moderate";
+    const outcome = OUTCOMES[outcomeKey];
+    const roleTitle = ROLES[selectedRole].shortTitle;
+    const trackLabel = (t) => t === 1 ? "Assertive" : t === -1 ? "Diplomatic" : "Moderate";
+
+    return e('div', { style: S.container },
+      liveRegion,
+      e('main', { id: "main-content", ref: mainRef, tabIndex: -1, style: { outline: "none", ...S.maxW } },
+        e('div', { style: { textAlign: "center", marginBottom: 20 } },
+          e('p', { style: { fontSize: 11, color: S.gold, fontFamily: "monospace", letterSpacing: 3 } }, "SIMULATION COMPLETE"),
+          e('h1', { style: { color: S.gold, fontSize: 26, margin: "8px 0", fontWeight: "normal" } }, outcome.title),
+          e('p', { style: { fontSize: 13, color: S.textSecondary } }, "You played as: " + roleTitle),
+        ),
+        e('section', { 'aria-label': "Outcome briefing", style: S.card },
+          e('h2', { style: { fontSize: 11, color: S.gold, fontFamily: "monospace", letterSpacing: 2, marginBottom: 12, fontWeight: "normal" } }, "OUTCOME BRIEFING"),
+          ...outcome.summary.split("\n").map((para, i) => para.trim() ? e('p', { key: i, style: { color: S.textPrimary, lineHeight: 1.8, margin: "0 0 14px" } }, para) : null)
+        ),
+        e('section', { 'aria-label': "Long-term assessment", style: { ...S.card, borderColor: "#4a90d933" } },
+          e('h2', { style: { fontSize: 11, color: "#6ab0ef", fontFamily: "monospace", letterSpacing: 2, marginBottom: 10, fontWeight: "normal" } }, "LONG-TERM ASSESSMENT"),
+          e('p', { style: { color: S.textSecondary, lineHeight: 1.7, margin: 0 } }, outcome.longTerm)
+        ),
+        e('section', { 'aria-label': "Your decision path", style: { ...S.card, borderColor: S.gold + "33" } },
+          e('h2', { style: { fontSize: 11, color: S.gold, fontFamily: "monospace", letterSpacing: 2, marginBottom: 10, fontWeight: "normal" } }, "YOUR DECISION PATH"),
+          e('div', { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+            ...choices.map((c, i) => e('div', { key: i, style: {
+              padding: "6px 14px", borderRadius: 4, fontSize: 12, fontFamily: "monospace",
+              background: c === 1 ? "#d94a4a22" : c === -1 ? "#4a90d922" : "#c4a35a22",
+              color: c === 1 ? "#ef6b6b" : c === -1 ? "#6ab0ef" : S.gold,
+              border: "1px solid " + (c === 1 ? "#d94a4a44" : c === -1 ? "#4a90d944" : "#c4a35a44"),
+            } }, "R" + (i+1) + ": " + trackLabel(c)))
+          )
+        ),
+        e('section', { 'aria-label': "Next steps", style: { ...S.card, borderColor: S.gold + "44", textAlign: "center" } },
+          e('p', { style: { color: S.gold, margin: "0 0 8px", fontSize: 15, fontWeight: "bold" } }, "Proceed to Blackboard to complete your reflection journal."),
+          e('p', { style: { color: S.textSecondary, margin: 0, fontSize: 13, lineHeight: 1.6 } },
+            "Reflect on the trade-offs you navigated, whether different choices could have produced a better outcome, and what this simulation reveals about the challenges of U.S. foreign policy in the Asia-Pacific."
+          )
+        ),
+        e('div', { style: { marginTop: 16 } },
+          e('button', {
+            onClick: handleRestart,
+            style: { ...S.btn, background: "linear-gradient(135deg, #1e3350, #162540)", color: S.gold, border: "1px solid " + S.gold + "33", textAlign: "center", width: "100%", cursor: "pointer" },
+          }, "Play Again as a Different Role")
+        )
+      )
+    );
+  }
+
+  return null;
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById('root'));
+</script>
+</body>
+</html>
