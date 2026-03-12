@@ -1,3 +1,3 @@
 ---
-title: Games Games Gaemes
+title: Games Games Games
 ---
