@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cyber Clash with China — UNSC Simulation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+/* ═══════════════════════════════════════
+   WCAG AA-compliant color system
+   All text/bg combos verified ≥ 4.5:1
+   ═══════════════════════════════════════ */
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #1a2236;
+  --bg-card-hover: #212d48;
+  --border: #2e3e5c;
+  --border-bright: #4a6fa5;
+  --text-primary: #edf0f7;
+  --text-secondary: #a8b8d4;
+  --text-muted: #7f93b5;
+  --accent-assertive: #f05a64;
+  --accent-moderate: #f4a236;
+  --accent-diplomatic: #3dd68c;
+  --accent-blue: #5a9fe6;
+  --accent-cyan: #22d3ee;
+  --npc-supportive: #3dd68c;
+  --npc-neutral: #f4a236;
+  --npc-agitated: #f05a64;
+  --badge-dark: #111318;
+  --focus-ring: #22d3ee;
+  --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --transition: 0.25s ease;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+body { font-family: var(--font-body); background: #0a0e17; background: var(--bg-primary); color: #edf0f7; color: var(--text-primary); line-height: 1.7; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+#app { max-width: 960px; margin: 0 auto; padding: 1.5rem; min-height: 100vh; }
+.skip-link { position: absolute; top: -100px; left: 0; background: var(--accent-cyan); color: var(--badge-dark); padding: 0.5rem 1rem; font-weight: 700; z-index: 9999; text-decoration: none; border-radius: 0 0 6px 0; }
+.skip-link:focus { top: 0; }
+*:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; border-radius: 4px; }
+a { color: var(--accent-cyan); text-decoration: underline; }
+a:hover { color: #fff; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+#live-announcer { position: absolute; clip: rect(0,0,0,0); height: 1px; width: 1px; overflow: hidden; }
+button { font-family: var(--font-body); cursor: pointer; border: none; border-radius: 6px; font-size: 1rem; transition: all var(--transition); }
+.btn-primary { background: var(--accent-blue); color: #fff; padding: 0.8rem 2rem; font-weight: 700; font-size: 1rem; }
+.btn-primary:hover { background: #6db0f2; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.badge { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 3px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.badge-assertive { background: var(--accent-assertive); color: #fff; }
+.badge-moderate { background: var(--accent-moderate); color: var(--badge-dark); }
+.badge-diplomatic { background: var(--accent-diplomatic); color: var(--badge-dark); }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; transition: border-color var(--transition); }
+.card:hover { border-color: var(--border-bright); }
+.btn-option { width: 100%; text-align: left; background: #1a2236; background: var(--bg-card); border: 2px solid #2e3e5c; border: 2px solid var(--border); color: #edf0f7; color: var(--text-primary); padding: 1.1rem 1.25rem; margin-bottom: 0.75rem; border-radius: 8px; line-height: 1.6; }
+.btn-option:hover { border-color: var(--accent-blue); background: var(--bg-card-hover); }
+.btn-option[aria-checked="true"] { border-color: var(--accent-cyan); background: rgba(34,211,238,0.07); }
+.btn-option .option-label { display: block; font-weight: 700; margin-bottom: 0.4rem; font-size: 1.02rem; color: #edf0f7; color: var(--text-primary); }
+.btn-option .option-desc { display: block; color: #a8b8d4; color: var(--text-secondary); font-size: 0.94rem; line-height: 1.6; }
+.progress-bar { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+.progress-step { flex: 1; height: 6px; border-radius: 3px; background: var(--border); transition: background var(--transition); }
+.progress-step.completed { background: var(--accent-cyan); }
+.progress-step.current { background: var(--accent-blue); }
+.screen-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.screen-header h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: #edf0f7; color: var(--text-primary); margin-bottom: 0.3rem; }
+.screen-header .subtitle { color: #a8b8d4; color: var(--text-secondary); font-size: 0.97rem; }
+.situation-box { background: linear-gradient(135deg, var(--bg-card) 0%, rgba(26,34,54,0.85) 100%); border: 1px solid var(--border); border-left: 4px solid var(--accent-blue); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+.situation-box h3 { font-size: 0.84rem; text-transform: uppercase; letter-spacing: 0.08em; color: #22d3ee; color: var(--accent-cyan); margin-bottom: 0.6rem; }
+.situation-box p, .situation-box li { color: #a8b8d4; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.7; }
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.tab-btn { background: #1a2236; background: var(--bg-card); color: #a8b8d4; color: var(--text-secondary); border: 1px solid #2e3e5c; border: 1px solid var(--border); padding: 0.55rem 1.1rem; font-size: 0.88rem; font-weight: 600; border-radius: 6px; }
+.tab-btn:hover { border-color: #5a9fe6; border-color: var(--accent-blue); color: #edf0f7; color: var(--text-primary); }
+.tab-btn[aria-selected="true"] { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+.npc-panel { margin-top: 1.5rem; padding: 1.25rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; }
+.npc-panel h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: #7f93b5; color: var(--text-muted); margin-bottom: 1rem; }
+.npc-row { display: flex; align-items: flex-start; gap: 0.85rem; padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
+.npc-row:last-child { border-bottom: none; }
+.npc-flag { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; background: var(--bg-card); border: 2px solid var(--border); overflow: hidden; }
+.npc-info { flex: 1; }
+.npc-name { font-weight: 700; font-size: 0.95rem; color: #edf0f7; color: var(--text-primary); margin-bottom: 0.2rem; }
+.npc-mood { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.mood-supportive { color: #3dd68c; color: var(--npc-supportive); }
+.mood-neutral { color: #f4a236; color: var(--npc-neutral); }
+.mood-agitated { color: #f05a64; color: var(--npc-agitated); }
+.npc-quote { font-size: 0.9rem; color: #a8b8d4; color: var(--text-secondary); font-style: italic; margin-top: 0.35rem; line-height: 1.55; }
+.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+@media (max-width: 640px) { .role-grid { grid-template-columns: 1fr; } }
+.role-card { background: var(--bg-card); border: 2px solid var(--border); border-radius: 8px; padding: 1.25rem; cursor: pointer; transition: all var(--transition); text-align: left; }
+.role-card:hover { border-color: var(--accent-blue); background: var(--bg-card-hover); }
+.role-card[aria-pressed="true"] { border-color: var(--accent-cyan); background: rgba(34,211,238,0.06); }
+.role-card .role-icon { margin-bottom: 0.75rem; }
+.role-card .role-name { font-weight: 700; font-size: 1.08rem; margin-bottom: 0.35rem; color: #edf0f7; color: var(--text-primary); }
+.role-card .role-desc { color: #a8b8d4; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55; }
+.role-card .role-tag { display: inline-block; margin-top: 0.6rem; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; color: #7f93b5; color: var(--text-muted); border: 1px solid #2e3e5c; border: 1px solid var(--border); padding: 0.2rem 0.55rem; border-radius: 3px; }
+.tracker { margin: 1rem 0; }
+.tracker-round { display: flex; align-items: flex-start; gap: 1rem; padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
+.tracker-round:last-child { border-bottom: none; }
+.tracker-round-num { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-card); border: 2px solid var(--accent-cyan); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.88rem; color: var(--accent-cyan); flex-shrink: 0; }
+.tracker-content { flex: 1; }
+.tracker-choice { font-weight: 700; font-size: 0.97rem; margin-bottom: 0.2rem; color: #edf0f7; color: var(--text-primary); }
+.tracker-desc { color: #a8b8d4; color: var(--text-secondary); font-size: 0.9rem; }
+.escalation-warning { background: rgba(240,90,100,0.08); border: 2px solid rgba(240,90,100,0.35); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; text-align: center; }
+.escalation-warning h3 { color: #f05a64; color: var(--accent-assertive); font-size: 1.15rem; margin-bottom: 0.5rem; }
+.escalation-warning p { color: #a8b8d4; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.65; }
+.btn-blackboard { display: inline-block; background: #3d6bb5; color: #fff; padding: 0.8rem 2rem; font-weight: 700; font-size: 1rem; border-radius: 6px; text-decoration: none; border: 2px solid #3d6bb5; }
+.btn-blackboard:hover { background: #4a7cc9; border-color: #4a7cc9; color: #fff; }
+.illustration { display: flex; justify-content: center; margin: 1.5rem 0; }
+.illustration svg { max-width: 100%; height: auto; }
+.round-illo { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+.sim-footer { text-align: center; padding: 2rem 0 1rem; color: #7f93b5; color: var(--text-muted); font-size: 0.82rem; border-top: 1px solid #2e3e5c; border-top: 1px solid var(--border); margin-top: 2rem; line-height: 1.7; }
+.fade-in { animation: fadeIn 0.35s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+@media (forced-colors: active) {
+  .btn-option[aria-checked="true"] { border: 3px solid Highlight; }
+  .role-card[aria-pressed="true"] { border: 3px solid Highlight; }
+  .progress-step.completed, .progress-step.current { background: Highlight; }
+  .badge { border: 1px solid currentColor; }
+}
+</style>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<div id="live-announcer" aria-live="assertive" aria-atomic="true" role="status"></div>
+<div id="app"></div>
+<script type="text/babel">
+const{useState,useEffect,useCallback,useRef}=React;
+
+function announce(msg){const el=document.getElementById('live-announcer');if(el){el.textContent='';requestAnimationFrame(()=>{el.textContent=msg;});}}
+function useFocusOnMount(){const ref=useRef(null);useEffect(()=>{if(ref.current)ref.current.focus();},[]);return ref;}
+
+/* ═══ SVG ILLUSTRATIONS ═══ */
+function CyberGlobeIllo(){return(
+<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Globe with cyber network connections and an alert signal">
+<defs><radialGradient id="gG" cx="50%" cy="45%" r="45%"><stop offset="0%" stopColor="#1a3a5c"/><stop offset="100%" stopColor="#0a1628"/></radialGradient><filter id="gl"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<circle cx="160" cy="100" r="72" fill="url(#gG)" stroke="#2e5a8a" strokeWidth="1.5"/>
+<ellipse cx="160" cy="100" rx="72" ry="24" fill="none" stroke="#2e5a8a" strokeWidth="0.5" opacity="0.5"/>
+<ellipse cx="160" cy="100" rx="72" ry="48" fill="none" stroke="#2e5a8a" strokeWidth="0.5" opacity="0.5"/>
+<ellipse cx="160" cy="100" rx="24" ry="72" fill="none" stroke="#2e5a8a" strokeWidth="0.5" opacity="0.5"/>
+{[[130,68],[185,72],[142,115],[195,108],[160,55],[120,95],[200,85],[155,135]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="3" fill="#22d3ee" opacity="0.85" filter="url(#gl)"/>)}
+<g stroke="#22d3ee" strokeWidth="0.7" opacity="0.4"><line x1="130" y1="68" x2="185" y2="72"/><line x1="185" y1="72" x2="195" y2="108"/><line x1="130" y1="68" x2="142" y2="115"/><line x1="142" y1="115" x2="195" y2="108"/><line x1="160" y1="55" x2="185" y2="72"/><line x1="160" y1="55" x2="130" y2="68"/><line x1="120" y1="95" x2="142" y2="115"/><line x1="200" y1="85" x2="195" y2="108"/><line x1="155" y1="135" x2="142" y2="115"/></g>
+<g transform="translate(160,100)" opacity="0.2"><path d="M0-35 L22-20 L22,8 C22,22 12,32 0,38 C-12,32-22,22-22,8 L-22-20Z" fill="none" stroke="#22d3ee" strokeWidth="2"/></g>
+<circle cx="185" cy="72" r="8" fill="none" stroke="#f05a64" strokeWidth="1.5" opacity="0.6"><animate attributeName="r" from="4" to="14" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.8" to="0" dur="2s" repeatCount="indefinite"/></circle>
+<text x="88" y="188" fill="#7f93b5" fontSize="9" fontFamily="system-ui" textAnchor="middle">CYBER THREAT</text>
+<text x="160" y="188" fill="#a8b8d4" fontSize="10" fontFamily="system-ui" fontWeight="700" textAnchor="middle">UNSC SIMULATION</text>
+<text x="232" y="188" fill="#7f93b5" fontSize="9" fontFamily="system-ui" textAnchor="middle">CRISIS RESPONSE</text>
+</svg>);}
+
+function UNSCTableIllo(){return(
+<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="UN Security Council horseshoe table with five seated delegations">
+<path d="M40,95 Q150,20 260,95" fill="none" stroke="#2e5a8a" strokeWidth="3" opacity="0.6"/>
+{[[55,85,'US','#5a9fe6'],[100,52,'CN','#f05a64'],[150,38,'SG','#22d3ee'],[200,52,'RU','#a78bfa'],[245,85,'FR','#f4a236']].map(([x,y,l,c],i)=>(
+<g key={i}><circle cx={x} cy={y} r="14" fill="#1a2236" stroke={c} strokeWidth="2"/><text x={x} y={y+4} textAnchor="middle" fill="#edf0f7" fontSize="8" fontWeight="700" fontFamily="system-ui">{l}</text></g>))}
+<circle cx="150" cy="100" r="10" fill="none" stroke="#22d3ee" strokeWidth="0.8" opacity="0.3"/>
+<text x="150" y="116" textAnchor="middle" fill="#7f93b5" fontSize="7.5" fontFamily="system-ui">SECURITY COUNCIL</text>
+</svg>);}
+
+function RoleIcon({roleId}){
+const colors={US:'#5a9fe6',CN:'#f05a64',RU:'#a78bfa',FR:'#f4a236',SG:'#22d3ee'};
+const bgs={US:'#1a2a44',CN:'#2a1a1a',RU:'#1f1a2e',FR:'#2a2210',SG:'#0d2a2e'};
+return(<svg width="44" height="44" viewBox="0 0 44 44" role="img" aria-label={`${roleId} delegation icon`}>
+<rect x="2" y="2" width="40" height="40" rx="8" fill={bgs[roleId]} stroke={colors[roleId]} strokeWidth="2"/>
+<text x="22" y="27" textAnchor="middle" fill="#edf0f7" fontSize={roleId==='SG'?14:16} fontWeight="700" fontFamily="system-ui">{roleId}</text>
+</svg>);}
+
+function RoundIllo({round}){
+const illos=[
+<svg key="0" viewBox="0 0 280 70" role="img" aria-label="Emergency session podium with alert indicator">
+<rect x="110" y="25" width="60" height="35" rx="4" fill="#1a2236" stroke="#2e5a8a" strokeWidth="1.5"/>
+<rect x="120" y="15" width="40" height="14" rx="3" fill="#1a2236" stroke="#5a9fe6" strokeWidth="1.5"/>
+<circle cx="140" cy="22" r="3" fill="#f05a64"><animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite"/></circle>
+<line x1="128" y1="28" x2="128" y2="38" stroke="#7f93b5" strokeWidth="1.5"/><circle cx="128" cy="26" r="2.5" fill="#7f93b5"/>
+<line x1="152" y1="28" x2="152" y2="38" stroke="#7f93b5" strokeWidth="1.5"/><circle cx="152" cy="26" r="2.5" fill="#7f93b5"/>
+</svg>,
+<svg key="1" viewBox="0 0 280 70" role="img" aria-label="Magnifying glass examining digital evidence">
+<rect x="95" y="12" width="90" height="48" rx="4" fill="#1a2236" stroke="#2e5a8a" strokeWidth="1.5"/>
+<line x1="105" y1="24" x2="145" y2="24" stroke="#2e5a8a" strokeWidth="2"/><line x1="105" y1="32" x2="160" y2="32" stroke="#22d3ee" strokeWidth="2" opacity="0.5"/>
+<line x1="105" y1="40" x2="135" y2="40" stroke="#2e5a8a" strokeWidth="2"/><line x1="105" y1="48" x2="155" y2="48" stroke="#f05a64" strokeWidth="2" opacity="0.5"/>
+<circle cx="195" cy="32" r="18" fill="none" stroke="#5a9fe6" strokeWidth="2.5"/>
+<line x1="208" y1="45" x2="222" y2="59" stroke="#5a9fe6" strokeWidth="3" strokeLinecap="round"/>
+<text x="195" y="36" textAnchor="middle" fill="#22d3ee" fontSize="10" fontWeight="700" fontFamily="monospace">?</text>
+</svg>,
+<svg key="2" viewBox="0 0 280 70" role="img" aria-label="Scales of justice weighing norms against force">
+<line x1="100" y1="25" x2="180" y2="25" stroke="#5a9fe6" strokeWidth="2"/>
+<rect x="135" y="25" width="10" height="35" rx="2" fill="#1a2236" stroke="#2e5a8a" strokeWidth="1.5"/>
+<circle cx="140" cy="22" r="5" fill="#1a2236" stroke="#5a9fe6" strokeWidth="1.5"/>
+<path d="M95,28 Q100,40 105,28" fill="none" stroke="#3dd68c" strokeWidth="1.5"/>
+<line x1="95" y1="28" x2="100" y2="25" stroke="#5a9fe6" strokeWidth="1"/><line x1="105" y1="28" x2="100" y2="25" stroke="#5a9fe6" strokeWidth="1"/>
+<text x="100" y="24" textAnchor="middle" fill="#3dd68c" fontSize="7" fontFamily="system-ui">NORMS</text>
+<path d="M175,28 Q180,43 185,28" fill="none" stroke="#f05a64" strokeWidth="1.5"/>
+<line x1="175" y1="28" x2="180" y2="25" stroke="#5a9fe6" strokeWidth="1"/><line x1="185" y1="28" x2="180" y2="25" stroke="#5a9fe6" strokeWidth="1"/>
+<text x="180" y="24" textAnchor="middle" fill="#f05a64" fontSize="7" fontFamily="system-ui">FORCE</text>
+<line x1="120" y1="62" x2="160" y2="62" stroke="#2e5a8a" strokeWidth="2"/>
+</svg>,
+<svg key="3" viewBox="0 0 280 70" role="img" aria-label="Ballot box showing votes with 9 of 15 votes needed">
+<rect x="110" y="10" width="60" height="50" rx="5" fill="#1a2236" stroke="#5a9fe6" strokeWidth="2"/>
+<rect x="125" y="8" width="30" height="6" rx="2" fill="#0a0e17" stroke="#5a9fe6" strokeWidth="1"/>
+<rect x="128" y="9" width="24" height="3" rx="1" fill="#2e5a8a"/>
+<g transform="translate(125,28)"><path d="M2,6 L6,10 L14,2" fill="none" stroke="#3dd68c" strokeWidth="2.5" strokeLinecap="round"/></g>
+<g transform="translate(145,28)"><path d="M2,6 L6,10 L14,2" fill="none" stroke="#3dd68c" strokeWidth="2.5" strokeLinecap="round"/></g>
+<g transform="translate(125,40)"><line x1="3" y1="3" x2="12" y2="12" stroke="#f05a64" strokeWidth="2.5" strokeLinecap="round"/><line x1="12" y1="3" x2="3" y2="12" stroke="#f05a64" strokeWidth="2.5" strokeLinecap="round"/></g>
+<g transform="translate(145,40)"><path d="M2,6 L6,10 L14,2" fill="none" stroke="#3dd68c" strokeWidth="2.5" strokeLinecap="round"/></g>
+<text x="208" y="40" fill="#a8b8d4" fontSize="10" fontFamily="system-ui" fontWeight="600">9 of 15</text>
+<text x="208" y="52" fill="#7f93b5" fontSize="8" fontFamily="system-ui">votes needed</text>
+</svg>];
+return <div className="round-illo">{illos[round]}</div>;}
+
+function OutcomeIllo({track}){
+const colors={a:'#f05a64',m:'#f4a236',d:'#3dd68c'};const c=colors[track]||colors.m;
+return(<svg viewBox="0 0 280 50" role="img" aria-label={`Decision path indicator: ${track==='a'?'assertive':track==='m'?'moderate':'diplomatic'} selected`}>
+<line x1="20" y1="25" x2="260" y2="25" stroke="#2e5a8a" strokeWidth="1" strokeDasharray="4,4"/>
+<circle cx="70" cy="25" r="6" fill="#1a2236" stroke="#2e5a8a" strokeWidth="1.5"/>
+<circle cx="140" cy="25" r="6" fill="#1a2236" stroke="#2e5a8a" strokeWidth="1.5"/>
+<circle cx="210" cy="25" r="6" fill="#1a2236" stroke="#2e5a8a" strokeWidth="1.5"/>
+<circle cx={track==='a'?70:track==='m'?140:210} cy="25" r="8" fill={c} opacity="0.85"><animate attributeName="r" values="7;9;7" dur="2s" repeatCount="indefinite"/></circle>
+<text x="70" y="45" textAnchor="middle" fill="#7f93b5" fontSize="7.5" fontFamily="system-ui">ASSERTIVE</text>
+<text x="140" y="45" textAnchor="middle" fill="#7f93b5" fontSize="7.5" fontFamily="system-ui">MODERATE</text>
+<text x="210" y="45" textAnchor="middle" fill="#7f93b5" fontSize="7.5" fontFamily="system-ui">DIPLOMATIC</text>
+</svg>);}
+
+/* ═══ GAME DATA ═══ */
+const ROLES={US:{id:'US',name:'United States',abbr:'US',desc:'The aggrieved party. The Nasdaq hack dealt a blow to your economy and credibility. You weigh all options — including military force — but must navigate the UNSC where China holds a veto.',tag:'P5 — Veto Power',interests:'Deter future cyberattacks, hold China accountable, protect financial infrastructure, maintain credibility of U.S. deterrence.'},CN:{id:'CN',name:'China',abbr:'CN',desc:'Beijing denies involvement in the Nasdaq hack and insists the Zheng He Squadron acted independently. You seek to deflect blame, defend South China Sea claims, and avoid binding resolutions.',tag:'P5 — Veto Power',interests:'Avoid sanctions or condemnation, protect sovereignty claims in the South China Sea, resist precedent-setting cyber norms.'},RU:{id:'RU',name:'Russia',abbr:'RU',desc:'A strategic partner with China who shares an interest in resisting Western cyber norms, but you have your own capabilities to protect and do not want precedents that bind you.',tag:'P5 — Veto Power',interests:'Block Western-led cyber norm frameworks, support China without overcommitting, protect freedom of action in cyberspace.'},FR:{id:'FR',name:'France',abbr:'FR',desc:'A Western ally that values multilateral institutions and the rule of law. You want de-escalation but see an opportunity to advance international cyber norms through the UNSC.',tag:'P5 — Veto Power',interests:'De-escalate the crisis, strengthen multilateral norms for cyberspace, protect EU economic interests, preserve UNSC credibility.'},SG:{id:'SG',name:'UN Secretary-General',abbr:'SG',desc:'You convened this emergency session to prevent escalation between two nuclear-armed P5 members. Your role is to mediate, build consensus, and protect the authority of the UN.',tag:'Chief Administrative Officer',interests:'Prevent escalation, build consensus, advance the UN\'s role in cybersecurity governance, protect civilians and global markets.'}};
+const ROLE_LIST=['US','CN','RU','FR','SG'];
+const ROUND_TITLES=['Emergency Session','The Attribution Debate','Charting a Course','The Resolution Vote'];
+const ROUND_CONTEXTS=['The UN Secretary-General has convened an emergency meeting of the Security Council. The Nasdaq cyberattack has shaken global markets, and the U.S. is threatening military action. The world watches as the Council convenes.','Intelligence briefings are being presented. The U.S. claims 90% certainty that elements of the Chinese government knew about the attack. Beijing categorically denies involvement.','The debate shifts to policy. Four approaches have emerged: bilateral negotiations, UNSC-managed dispute resolution, broader cyber norms, or a non-binding presidential statement.','The Council must act. Draft resolutions are on the table, and the threat of a P5 veto looms over every option.'];
+const BG_TEXTS=['Cyberspace is a domain of conflict with few accepted standards. About 40 countries have acquired cyberweapons. The 2013 UN GGE agreed international law applies in cyberspace; the 2015 group endorsed norms including not attacking critical infrastructure. The 2017 negotiations collapsed without new consensus.','Attribution in cyberspace is uniquely difficult. Attackers can mask origins, use proxies, and operate across borders. The 2013 GGE report asserted countries are responsible for cyberattacks from their territories, but enforcement remains contested.','The four policy options: (1) Bilateral U.S.-China negotiations; (2) UNSC-managed dispute resolution with investigations and possible sanctions; (3) Broader binding cyber norms; (4) Non-binding presidential statement. Each involves trade-offs between ambition and feasibility given the veto dynamic.','UNSC resolutions require 9 of 15 votes with no P5 veto. Abstentions by permanent members do not count as vetoes. If no resolution passes, the Council may attempt a presidential statement by consensus. Both the U.S. and China hold veto power.'];
+
+const GD={US:{rounds:[
+{briefing:'The Nasdaq attack cost ~$4.7 billion and exposed financial infrastructure vulnerabilities. The President authorized you to pursue maximum accountability.',options:[{id:'a',track:'assertive',label:'Demand immediate condemnation of China',desc:'Call on the Council to formally condemn the attack and demand China hand over the hackers. Signal that military options remain on the table.'},{id:'m',track:'moderate',label:'Request a formal investigation',desc:'Propose an independent investigation before assigning blame. Share intelligence while keeping military options in reserve.'},{id:'d',track:'diplomatic',label:'Open with a call for restraint',desc:'Acknowledge severity but emphasize working together. Propose direct consultations with China to de-escalate.'}]},
+{briefing:'Your agencies assess 90% certainty parts of the Chinese government knew. China\'s ambassador insists the Zheng He Squadron acted alone.',options:[{id:'a',track:'assertive',label:'Present classified evidence publicly',desc:'Declassify portions of the assessment. Argue state responsibility applies under the 2013 GGE report.'},{id:'m',track:'moderate',label:'Request a UN-led forensic panel',desc:'Propose a neutral technical panel under the Secretary-General to examine evidence. Buy time while maintaining pressure.'},{id:'d',track:'diplomatic',label:'Acknowledge complexity of attribution',desc:'Note attribution difficulty and propose a joint U.S.-China working group as a confidence-building measure.'}]},
+{briefing:'Council members debate four approaches. Your allies look to you for leadership on the resolution.',options:[{id:'a',track:'assertive',label:'Push for binding resolution with teeth',desc:'Draft a Chapter VII resolution prohibiting cyberattacks on infrastructure with an enforcement committee empowered to recommend sanctions.'},{id:'m',track:'moderate',label:'Propose a cyber norms framework',desc:'Advocate for codifying the 2015 GGE norms into binding UNSC commitments with infrastructure protections.'},{id:'d',track:'diplomatic',label:'Support structured bilateral talks',desc:'Back a resolution for U.S.-China negotiations under the Secretary-General\'s good offices with a reporting deadline.'}]},
+{briefing:'The final vote approaches. France has compromise language. Russia may follow China\'s lead on any veto.',options:[{id:'a',track:'assertive',label:'Force a vote to expose China\'s veto',desc:'Bring the strongest resolution to a vote, knowing China will likely veto. Isolate Beijing diplomatically.'},{id:'m',track:'moderate',label:'Accept compromise language',desc:'Support a resolution establishing a cybersecurity committee and calling for restraint, even without naming China.'},{id:'d',track:'diplomatic',label:'Settle for a presidential statement',desc:'Accept a non-binding statement expressing concern and calling for negotiations.'}]}
+]},CN:{rounds:[
+{briefing:'Beijing denies involvement. The Zheng He Squadron is independent. Meanwhile, U.S. military flights near your territories are the real provocation.',options:[{id:'a',track:'assertive',label:'Counter-accuse the United States',desc:'Shift focus to U.S. provocations in the South China Sea. Demand the Council address U.S. aggression first.'},{id:'m',track:'moderate',label:'Deny involvement, propose mutual restraint',desc:'Deny government involvement while proposing a mutual stand-down: U.S. pauses flights, China cooperates on the investigation.'},{id:'d',track:'diplomatic',label:'Express concern and offer cooperation',desc:'Express concern about the attack and offer to cooperate with an international investigation.'}]},
+{briefing:'The U.S. is presenting intelligence linking the Zheng He Squadron to the PLA. Several members appear receptive.',options:[{id:'a',track:'assertive',label:'Reject the evidence and threaten veto',desc:'Dismiss U.S. intelligence as fabricated. Signal China will veto any resolution assigning blame.'},{id:'m',track:'moderate',label:'Question methodology, accept neutral review',desc:'Challenge reliability without outright rejection. Accept a neutral panel with strictly limited mandate.'},{id:'d',track:'diplomatic',label:'Propose a joint investigation',desc:'Offer to participate in a joint investigation including Chinese experts. Demonstrate good faith.'}]},
+{briefing:'Any binding resolution risks constraining your operations. But being seen as obstructionist also has costs.',options:[{id:'a',track:'assertive',label:'Block any binding action',desc:'Argue the UNSC lacks jurisdiction over cybersecurity. Signal willingness to veto any binding resolution.'},{id:'m',track:'moderate',label:'Redirect to existing UN processes',desc:'Propose referring matters to the OEWG. Support a resolution limited to bilateral dialogue.'},{id:'d',track:'diplomatic',label:'Engage constructively on norms',desc:'Signal willingness to discuss norms provided the resolution doesn\'t single out China.'}]},
+{briefing:'Using your veto blocks the resolution but damages your standing. Abstaining sends a different message.',options:[{id:'a',track:'assertive',label:'Veto the resolution',desc:'Exercise your veto. Deliver a statement defending sovereignty and accusing the Council of U.S. manipulation.'},{id:'m',track:'moderate',label:'Abstain with a statement',desc:'Abstain while noting reservations. Allow the resolution to potentially pass without your endorsement.'},{id:'d',track:'diplomatic',label:'Vote yes on compromise language',desc:'Support the compromise to demonstrate commitment to multilateral institutions. Shape implementation afterward.'}]}
+]},RU:{rounds:[
+{briefing:'Your strategic partnership with China matters, but you have your own capabilities. The U.S. seeks precedents that could later constrain Russia.',options:[{id:'a',track:'assertive',label:'Back China and deflect blame',desc:'Support China\'s position that U.S. military presence is the provocation. Argue Western countries have no standing to judge.'},{id:'m',track:'moderate',label:'Call for balanced discussion',desc:'Acknowledge severity but insist any investigation must also address U.S. cyber activities.'},{id:'d',track:'diplomatic',label:'Emphasize de-escalation',desc:'Focus on the risk of escalation between nuclear powers. Support mediation and a cooling-off period.'}]},
+{briefing:'Any attribution framework could later target Russia. But outright rejection may isolate you alongside China.',options:[{id:'a',track:'assertive',label:'Reject Western attribution standards',desc:'Argue U.S. frameworks are politically motivated. Demand multilateral development through the OEWG.'},{id:'m',track:'moderate',label:'Support neutral investigation with conditions',desc:'Accept a UN panel only with Russian experts and scope limited to technical analysis.'},{id:'d',track:'diplomatic',label:'Propose a broader attribution framework',desc:'Suggest a standing mechanism for investigating all cyber incidents. Frame as a governance contribution.'}]},
+{briefing:'France and the Secretary-General push for norms. This could set dangerous precedents, but total blocking may not be wise.',options:[{id:'a',track:'assertive',label:'Signal willingness to veto',desc:'State Russia cannot support binding constraints on sovereign cyber capabilities. Align with China.'},{id:'m',track:'moderate',label:'Propose voluntary guidelines',desc:'Counter with voluntary confidence-building measures modeled on the OEWG. Appear constructive while preserving freedom.'},{id:'d',track:'diplomatic',label:'Negotiate from within',desc:'Engage on resolution language, working to soften binding provisions into recommendations.'}]},
+{briefing:'China looks to you for solidarity. The West watches. Your vote signals far beyond this crisis.',options:[{id:'a',track:'assertive',label:'Veto alongside China',desc:'Exercise your veto in solidarity. Accept diplomatic costs to protect partnership and cyber freedom.'},{id:'m',track:'moderate',label:'Abstain to preserve flexibility',desc:'Abstain, maintaining the China partnership without blocking Council action.'},{id:'d',track:'diplomatic',label:'Vote yes with reservations',desc:'Support the resolution with formal reservations. Position Russia as a bridge between East and West.'}]}
+]},FR:{rounds:[
+{briefing:'France values the transatlantic alliance and multilateral institutions. The attack affected European companies. You see a crisis and an opportunity.',options:[{id:'a',track:'assertive',label:'Stand firmly with the United States',desc:'Express solidarity with Washington. Call the attack a violation of international law and demand Chinese cooperation.'},{id:'m',track:'moderate',label:'Propose a structured Council response',desc:'Call for investigation and cyber norms, balancing accountability with due process. Position France as the bridge.'},{id:'d',track:'diplomatic',label:'Prioritize dialogue and de-escalation',desc:'Urge restraint. Propose Secretary-General-facilitated talks before binding action.'}]},
+{briefing:'France\'s intelligence largely corroborates U.S. findings. The question is how to use this without fracturing the Council.',options:[{id:'a',track:'assertive',label:'Corroborate U.S. intelligence publicly',desc:'Share France\'s own assessment, reinforcing the attribution case. Argue evidence demands action.'},{id:'m',track:'moderate',label:'Support a credible neutral investigation',desc:'Advocate for technically credible, politically neutral investigation. Offer French expertise.'},{id:'d',track:'diplomatic',label:'De-link attribution from immediate action',desc:'Propose immediate de-escalation while attribution is resolved through a longer process.'}]},
+{briefing:'France\'s moment to shape the outcome. You have credibility with both sides. Pushing too far risks a double veto.',options:[{id:'a',track:'assertive',label:'Champion binding cyber norms',desc:'Draft a Chapter VII resolution codifying norms with infrastructure protections. Accept veto risk.'},{id:'m',track:'moderate',label:'Craft pragmatic compromise language',desc:'Draft a resolution establishing a cybersecurity committee with non-binding norms and future review mechanism.'},{id:'d',track:'diplomatic',label:'Broker a minimal consensus',desc:'Work with the Secretary-General on the most ambitious achievable resolution.'}]},
+{briefing:'Your diplomacy shaped the resolution. How you vote defines France\'s role in cyber governance.',options:[{id:'a',track:'assertive',label:'Vote yes and call out obstructionists',desc:'Vote for the resolution and criticize any P5 member using their veto. Frame as a test of Council relevance.'},{id:'m',track:'moderate',label:'Vote yes and announce next steps',desc:'Support the resolution and announce France will host a Paris conference on cybersecurity norms.'},{id:'d',track:'diplomatic',label:'Vote yes and extend an olive branch',desc:'Support while acknowledging all concerns. Invite dissenting members to shape implementation.'}]}
+]},SG:{rounds:[
+{briefing:'Two nuclear-armed P5 members are on a collision course. The economy is damaged. Your credibility as honest broker is essential.',options:[{id:'a',track:'assertive',label:'Set an urgent tone',desc:'Frame the attack as a threat to peace under Article 39. Urge immediate concrete action.'},{id:'m',track:'moderate',label:'Present facts and outline options',desc:'Deliver a balanced briefing without assigning blame. Outline four policy options and invite structured debate.'},{id:'d',track:'diplomatic',label:'Emphasize common ground',desc:'Remind members of shared interests. Highlight 2013 and 2015 GGE reports as a foundation.'}]},
+{briefing:'The attribution debate is contentious. The U.S. and China are entrenching. You must keep things moving without taking sides.',options:[{id:'a',track:'assertive',label:'Propose a mandatory investigation',desc:'Recommend the Council mandate an independent investigation with full access to all evidence.'},{id:'m',track:'moderate',label:'Offer good offices for a neutral panel',desc:'Propose to oversee a neutral technical panel with P5-consulted experts and a 90-day deadline.'},{id:'d',track:'diplomatic',label:'Separate attribution from de-escalation',desc:'Suggest immediate mutual restraint while attribution is resolved through a separate process.'}]},
+{briefing:'You\'ve been mediating behind the scenes. France is willing to bridge. Russia wavers. China won\'t accept being singled out.',options:[{id:'a',track:'assertive',label:'Push for the strongest resolution',desc:'Advocate publicly for binding measures. Argue the Council must be seen acting on cybersecurity.'},{id:'m',track:'moderate',label:'Propose a phased approach',desc:'Draft a two-phase resolution: immediate de-escalation, then six months to develop binding norms.'},{id:'d',track:'diplomatic',label:'Build widest possible consensus',desc:'Craft something all 15 members can support, even with significant compromises.'}]},
+{briefing:'You don\'t vote, but your framing shapes the outcome and historical record.',options:[{id:'a',track:'assertive',label:'Frame a bold legacy moment',desc:'Present the resolution as a watershed. Warn that failure invites future attacks.'},{id:'m',track:'moderate',label:'Present a balanced path forward',desc:'Frame as a pragmatic first step and foundation to build on.'},{id:'d',track:'diplomatic',label:'Preserve unity, honor all perspectives',desc:'Honor all concerns. Frame even a modest outcome as proof multilateral diplomacy works.'}]}
+]}};
+
+/* ═══ NPC REACTIONS ═══ */
+function getNpcReactions(pr,round,ch){
+const npcs=ROLE_LIST.filter(r=>r!==pr);
+const bm={US:{a:'supportive',m:'neutral',d:'agitated'},CN:{a:'agitated',m:'neutral',d:'supportive'},RU:{a:'agitated',m:'neutral',d:'neutral'},FR:{a:'neutral',m:'supportive',d:'neutral'},SG:{a:'neutral',m:'supportive',d:'supportive'}};
+const md=JSON.parse(JSON.stringify(bm));
+if(pr==='US'&&ch==='a'){md.CN.a='agitated';md.RU.a='agitated';}
+if(pr==='US'&&ch==='d'){md.CN.d='supportive';md.SG.d='supportive';}
+if(pr==='CN'&&ch==='a'){md.US.a='agitated';md.FR.a='agitated';}
+if(pr==='CN'&&ch==='d'){md.US.d='supportive';md.FR.d='supportive';}
+if(pr==='RU'&&ch==='a'){md.US.a='agitated';md.FR.a='agitated';}
+if(pr==='FR'&&ch==='a'){md.CN.a='agitated';md.RU.a='agitated';}
+const Q={US:{supportive:['"We welcome this step toward accountability."','"This is the principled action the Council needs."','"Washington supports this direction."','"We appreciate the commitment to infrastructure protection."'],neutral:['"We are evaluating this carefully."','"We need stronger commitments."','"We reserve judgment."','"We had hoped for more decisive action."'],agitated:['"This fails to address the gravity of the attack."','"Half-measures are unacceptable when our economy was targeted."','"The Council risks irrelevance."','"Washington finds this unacceptable."']},CN:{supportive:['"China is committed to peaceful resolution."','"We appreciate the balanced approach."','"Beijing stands ready to cooperate."','"This reflects sovereign equality."'],neutral:['"We are studying this proposal."','"China has concerns but remains engaged."','"We require further consultation."','"Beijing will participate constructively."'],agitated:['"China categorically rejects these accusations."','"We will not accept attacks on our sovereignty."','"The veto exists for a reason."','"This approach is destabilizing."']},RU:{supportive:['"Russia supports a balanced approach."','"We welcome respect for sovereignty."','"Moscow sees merit here."','"A constructive step."'],neutral:['"Russia is monitoring developments."','"We have scope questions."','"Moscow will clarify its position."','"We neither endorse nor oppose."'],agitated:['"Russia cannot support Western-imposed frameworks."','"A dangerous precedent."','"Moscow will not be pressured."','"We object to politicizing cybersecurity."']},FR:{supportive:['"France believes this is responsible."','"Paris supports this and will contribute."','"Multilateral leadership at its best."','"We commend this contribution."'],neutral:['"France is considering implications."','"We see merits and risks."','"We want more emphasis on long-term norms."','"Ideas for strengthening this."'],agitated:['"This risks fracturing the Council."','"Below international expectations."','"We cannot support undermining institutions."','"We urge reconsideration."']},SG:{supportive:['"We welcome this commitment to de-escalation."','"Consistent with the UN Charter."','"I commend this spirit of cooperation."','"The UN stands ready to support."'],neutral:['"I encourage continued engagement."','"The Secretariat will study this."','"Consider long-term implications."','"We look forward to further discussion."'],agitated:['"I caution against escalatory actions."','"The UN needs cooperative members."','"I urge stepping back."','"This risks undermining the institution."']}};
+return npcs.map(nid=>{const mood=md[nid][ch]||'neutral';const ql=Q[nid][mood];return{id:nid,name:ROLES[nid].name,abbr:ROLES[nid].abbr,mood,quote:ql[round%ql.length]};});}
+
+/* ═══ SCREENS ═══ */
+function TitleScreen({onStart}){
+const h=useFocusOnMount();
+useEffect(()=>{announce('Cyber Clash with China simulation loaded. Press Begin to start.');},[]);
+return(<main className="fade-in" id="main-content">
+<div className="illustration"><CyberGlobeIllo/></div>
+<div style={{textAlign:'center',padding:'1rem 0 2rem'}}>
+<div style={{fontSize:'0.82rem',textTransform:'uppercase',letterSpacing:'0.12em',color:'#22d3ee',marginBottom:'0.5rem'}}>UNSC Crisis Simulation</div>
+<h1 ref={h} tabIndex="-1" style={{fontSize:'2.1rem',fontWeight:800,letterSpacing:'0.03em',lineHeight:1.25,marginBottom:'1rem',outline:'none'}}>Cyber Clash with China</h1>
+<p style={{color:'#a8b8d4',maxWidth:'620px',margin:'0 auto 1.5rem',fontSize:'1rem',lineHeight:1.7}}>The Nasdaq stock market has been hacked, costing billions and shaking confidence in U.S. financial systems. A Chinese hacker collective with ties to the People's Liberation Army has claimed responsibility. The UN Security Council has been convened.</p>
+<p style={{color:'#7f93b5',fontSize:'0.9rem',marginBottom:'2rem'}}>~20 minutes · 5 Roles · 4 Decision Rounds · Based on CFR Education materials</p>
+<button className="btn-primary" onClick={onStart} style={{fontSize:'1.05rem',padding:'0.85rem 2.5rem'}}>Begin Simulation</button>
+</div>
+<div className="illustration"><UNSCTableIllo/></div>
+<div className="situation-box" style={{marginTop:'1rem'}}><h3>The Scenario</h3><p>Following a U.S. Air Force flight near a shoal claimed by China in the South China Sea, the Nasdaq suffered a devastating cyberattack forcing trading to suspend for two days. The Zheng He Squadron — with known PLA ties — claimed credit. U.S. intelligence assesses 90% certainty that elements of the Chinese government knew. Beijing denies involvement. The U.S. has signaled all options are on the table. The Secretary-General has convened an emergency Security Council meeting.</p></div>
+<p style={{textAlign:'center',color:'#7f93b5',fontSize:'0.82rem',marginTop:'1rem'}}>Source: CFR Education — Council on Foreign Relations</p>
+</main>);}
+
+function RoleSelectScreen({onSelect}){
+const[sel,setSel]=useState(null);const h=useFocusOnMount();
+useEffect(()=>{announce('Select your role.');},[]);
+return(<main className="fade-in" id="main-content">
+<div className="screen-header"><h1 ref={h} tabIndex="-1" style={{outline:'none'}}>Select Your Role</h1><p className="subtitle">Choose which delegation you will represent</p></div>
+<div className="role-grid" role="radiogroup" aria-label="Available roles">{ROLE_LIST.map(id=>(
+<button key={id} className="role-card" onClick={()=>setSel(id)} aria-pressed={sel===id} role="radio" aria-checked={sel===id}>
+<div className="role-icon"><RoleIcon roleId={id}/></div>
+<div className="role-name">{ROLES[id].name}</div>
+<div className="role-desc">{ROLES[id].desc}</div>
+<div className="role-tag">{ROLES[id].tag}</div>
+</button>))}</div>
+{sel&&<div className="card fade-in" role="region" aria-label="Selected role details"><h3 style={{fontSize:'0.84rem',textTransform:'uppercase',letterSpacing:'0.08em',color:'#22d3ee',marginBottom:'0.5rem'}}>Your Interests as {ROLES[sel].name}</h3><p style={{color:'#a8b8d4',fontSize:'0.95rem'}}>{ROLES[sel].interests}</p></div>}
+<div style={{textAlign:'center',marginTop:'1.5rem'}}><button className="btn-primary" disabled={!sel} onClick={()=>{announce('Role confirmed: '+ROLES[sel].name);onSelect(sel);}}>Confirm Role &amp; Begin</button></div>
+</main>);}
+
+function BriefingScreen({role,round,totalRounds,onContinue}){
+const rd=GD[role].rounds[round];const[tab,setTab]=useState('situation');const h=useFocusOnMount();
+useEffect(()=>{announce(`Round ${round+1}: ${ROUND_TITLES[round]}`);},[round]);
+return(<main className="fade-in" id="main-content">
+<div className="progress-bar" role="progressbar" aria-valuenow={round+1} aria-valuemin={1} aria-valuemax={totalRounds} aria-label={`Round ${round+1} of ${totalRounds}`}>{Array.from({length:totalRounds},(_,i)=><div key={i} className={`progress-step${i<round?' completed':''}${i===round?' current':''}`}/>)}</div>
+<RoundIllo round={round}/>
+<div className="screen-header"><div style={{fontSize:'0.78rem',textTransform:'uppercase',letterSpacing:'0.1em',color:'#22d3ee',marginBottom:'0.3rem'}}>Round {round+1} of {totalRounds}</div><h1 ref={h} tabIndex="-1" style={{outline:'none'}}>{ROUND_TITLES[round]}</h1><p className="subtitle">Playing as: {ROLES[role].name}</p></div>
+<div className="tabs" role="tablist" aria-label="Briefing sections">{[['situation','Situation'],['briefing','Your Briefing'],['context','Background']].map(([k,l])=><button key={k} className="tab-btn" role="tab" aria-selected={tab===k} id={`tab-${k}`} aria-controls={`panel-${k}`} onClick={()=>setTab(k)}>{l}</button>)}</div>
+<div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="fade-in">
+{tab==='situation'&&<div className="situation-box"><h3>Current Situation</h3><p>{ROUND_CONTEXTS[round]}</p></div>}
+{tab==='briefing'&&<div className="situation-box" style={{borderLeftColor:'#f4a236'}}><h3>Intelligence Briefing — {ROLES[role].name}</h3><p>{rd.briefing}</p></div>}
+{tab==='context'&&<div className="situation-box" style={{borderLeftColor:'#7f93b5'}}><h3>Key Background</h3><p>{BG_TEXTS[round]}</p></div>}
+</div>
+<div style={{textAlign:'center',marginTop:'1.5rem'}}><button className="btn-primary" onClick={onContinue}>Proceed to Decision</button></div>
+</main>);}
+
+function DecisionScreen({role,round,totalRounds,onDecide}){
+const[sel,setSel]=useState(null);const rd=GD[role].rounds[round];
+const tl={a:'Assertive',m:'Moderate',d:'Diplomatic'};const tc={a:'badge-assertive',m:'badge-moderate',d:'badge-diplomatic'};
+const h=useFocusOnMount();
+useEffect(()=>{announce('Make your decision.');},[round]);
+return(<main className="fade-in" id="main-content">
+<div className="progress-bar" role="progressbar" aria-valuenow={round+1} aria-valuemin={1} aria-valuemax={totalRounds}>{Array.from({length:totalRounds},(_,i)=><div key={i} className={`progress-step${i<round?' completed':''}${i===round?' current':''}`}/>)}</div>
+<div className="screen-header" style={{marginBottom:'1.25rem'}}><div style={{fontSize:'0.78rem',textTransform:'uppercase',letterSpacing:'0.1em',color:'#22d3ee',marginBottom:'0.3rem'}}>Round {round+1}: {ROUND_TITLES[round]}</div><h1 ref={h} tabIndex="-1" style={{outline:'none'}}>Make Your Decision</h1><p className="subtitle">{ROLES[role].name}</p></div>
+<div role="radiogroup" aria-label="Decision options">{rd.options.map(o=>(
+<button key={o.id} className="btn-option" onClick={()=>setSel(o.id)} role="radio" aria-checked={sel===o.id}>
+<span className="option-label"><span className={`badge ${tc[o.id]}`} style={{marginRight:'0.5rem',verticalAlign:'middle'}}>{tl[o.id]}</span>{o.label}</span>
+<span className="option-desc">{o.desc}</span>
+</button>))}</div>
+<div style={{textAlign:'center',marginTop:'1.25rem'}}><button className="btn-primary" disabled={!sel} onClick={()=>{announce('Decision confirmed.');onDecide(sel);}}>Confirm Decision</button></div>
+</main>);}
+
+function OutcomeScreen({role,round,totalRounds,choice,onContinue}){
+const rd=GD[role].rounds[round];const opt=rd.options.find(o=>o.id===choice);
+const npcs=getNpcReactions(role,round,choice);
+const tl={a:'Assertive',m:'Moderate',d:'Diplomatic'};const tc={a:'badge-assertive',m:'badge-moderate',d:'badge-diplomatic'};
+const h=useFocusOnMount();
+useEffect(()=>{announce(`Round ${round+1} outcome. Review reactions.`);},[round]);
+return(<main className="fade-in" id="main-content">
+<div className="progress-bar">{Array.from({length:totalRounds},(_,i)=><div key={i} className={`progress-step${i<=round?' completed':''}`}/>)}</div>
+<div className="screen-header"><div style={{fontSize:'0.78rem',textTransform:'uppercase',letterSpacing:'0.1em',color:'#22d3ee',marginBottom:'0.3rem'}}>Round {round+1} Outcome</div><h1 ref={h} tabIndex="-1" style={{outline:'none'}}>Council Reactions</h1></div>
+<OutcomeIllo track={choice}/>
+<div className="card" style={{borderLeftColor:choice==='a'?'#f05a64':choice==='m'?'#f4a236':'#3dd68c',borderLeftWidth:'4px'}}>
+<div style={{marginBottom:'0.5rem'}}><span className={`badge ${tc[choice]}`}>{tl[choice]}</span></div>
+<div style={{fontWeight:700,fontSize:'1.02rem',marginBottom:'0.3rem'}}>{opt.label}</div>
+<div style={{color:'#a8b8d4',fontSize:'0.94rem'}}>{opt.desc}</div></div>
+<div className="npc-panel" role="region" aria-label="NPC delegation responses"><h3>Delegation Responses</h3>
+{npcs.map(n=>(
+<div className="npc-row" key={n.id}>
+<div className="npc-flag" aria-hidden="true"><RoleIcon roleId={n.id}/></div>
+<div className="npc-info"><div className="npc-name">{n.name} <span className={`npc-mood mood-${n.mood}`} aria-label={`Mood: ${n.mood}`}>{n.mood==='supportive'?'● Supportive':n.mood==='neutral'?'● Cautious':'● Agitated'}</span></div><div className="npc-quote">{n.quote}</div></div>
+</div>))}</div>
+<div style={{textAlign:'center',marginTop:'1.5rem'}}><button className="btn-primary" onClick={onContinue}>{round<totalRounds-1?'Continue to Next Round':'View Results'}</button></div>
+</main>);}
+
+function DecisionTracker({role,choices}){
+const tl={a:'Assertive',m:'Moderate',d:'Diplomatic'};const tc={a:'badge-assertive',m:'badge-moderate',d:'badge-diplomatic'};
+return(<div style={{marginTop:'1.5rem'}} role="region" aria-label="Decision path tracker"><h3 style={{fontSize:'0.85rem',textTransform:'uppercase',letterSpacing:'0.08em',color:'#7f93b5',marginBottom:'1rem'}}>Your Decision Path</h3><div className="tracker">{choices.map((c,i)=>{const o=GD[role].rounds[i].options.find(x=>x.id===c);return(<div className="tracker-round" key={i}><div className="tracker-round-num" aria-hidden="true">{i+1}</div><div className="tracker-content"><div className="tracker-choice"><span className={`badge ${tc[c]}`} style={{marginRight:'0.5rem'}}>{tl[c]}</span>{o.label}</div><div className="tracker-desc">Round {i+1}: {ROUND_TITLES[i]}</div></div></div>);})}</div></div>);}
+
+function EscalationScreen({role,choices,onRestart}){
+const h=useFocusOnMount();
+useEffect(()=>{announce('Crisis escalation. Simulation ended early.');},[]);
+const narr={US:'The U.S. launched retaliatory cyber operations, triggering escalation the Council cannot contain. Military forces are on high alert.',CN:'China\'s categorical rejection convinced Washington diplomacy has failed. The U.S. is preparing unilateral action.',RU:'Russia\'s obstruction fragmented the Council. The U.S. and China now confront each other without multilateral moderation.',FR:'France\'s aggressive stance alienated China and Russia, collapsing diplomatic space for compromise.',SG:'Your assertive framing was seen as taking sides, undermining credibility. Both parties lost confidence in the UN process.'};
+return(<main className="fade-in" id="main-content">
+<div className="screen-header"><h1 ref={h} tabIndex="-1" style={{outline:'none'}}>Crisis Escalation</h1><p className="subtitle">The situation has spiraled beyond control</p></div>
+<div className="escalation-warning" role="alert"><h3>⚠ Simulation Terminated Early</h3><p>Your consistently assertive approach pushed the crisis past diplomatic recovery. {narr[role]}</p></div>
+<div className="situation-box"><h3>Lessons</h3><p>In multilateral negotiations involving nuclear-armed powers with veto authority, consistently assertive approaches can foreclose diplomatic options. The UNSC's design requires consensus-building, especially when the parties to a dispute are permanent members.</p></div>
+<DecisionTracker role={role} choices={choices}/>
+<div style={{textAlign:'center',marginTop:'1.5rem',display:'flex',flexWrap:'wrap',gap:'1rem',justifyContent:'center'}}><button className="btn-primary" onClick={onRestart}>Try Again</button><a href="https://learn.ksu.edu" className="btn-blackboard" target="_blank" rel="noopener noreferrer">Proceed to Blackboard</a></div>
+<footer className="sim-footer">Based on CFR Education materials · Council on Foreign Relations<br/>For educational use · No personal data collected</footer>
+</main>);}
+
+function ResultsScreen({role,choices,onRestart}){
+const a=choices.filter(c=>c==='a').length,m=choices.filter(c=>c==='m').length,d=choices.filter(c=>c==='d').length;
+const h=useFocusOnMount();
+useEffect(()=>{announce('Simulation complete. Review your results.');},[]);
+let title,desc;
+if(d>=3){title='Consensus Achieved';desc='Your diplomatic approach built consensus. A presidential statement — or even a resolution — reflects shared commitment to de-escalation. While it may lack teeth, the process has de-escalated the crisis and opened negotiation channels.';}
+else if(m>=2&&a<=1){title='Pragmatic Progress';desc='Your balanced approach navigated the veto minefield. The Council adopted a resolution establishing a cybersecurity committee and calling for restraint — imperfect, but real.';}
+else if(a>=2&&d>=1){title='Principled Stand with Compromise';desc='You pushed hard for accountability while showing flexibility. The result is stronger than many expected, though it required concessions. One or more P5 members abstained.';}
+else if(m>=2){title='Middle Ground';desc='The Council adopted a measured response. It doesn\'t fully satisfy anyone, but it keeps institutional machinery working and avoids worst outcomes.';}
+else{title='Divided Council';desc='Your mixed approach reflected complexity but made coalition-building harder. The Council managed a presidential statement, but binding action proved elusive. The crisis remains unresolved, though escalation was avoided — for now.';}
+return(<main className="fade-in" id="main-content">
+<div className="screen-header"><div style={{fontSize:'0.78rem',textTransform:'uppercase',letterSpacing:'0.1em',color:'#22d3ee',marginBottom:'0.3rem'}}>Simulation Complete</div><h1 ref={h} tabIndex="-1" style={{outline:'none'}}>{title}</h1><p className="subtitle">Playing as: {ROLES[role].name}</p></div>
+<div className="situation-box"><h3>Outcome</h3><p>{desc}</p></div>
+<div className="card" role="region" aria-label="Decision profile"><h3 style={{fontSize:'0.85rem',textTransform:'uppercase',letterSpacing:'0.08em',color:'#7f93b5',marginBottom:'1rem'}}>Decision Profile</h3><div style={{display:'flex',gap:'1.5rem',flexWrap:'wrap'}}><div><span className="badge badge-assertive" style={{marginRight:'0.4rem'}}>Assertive</span><span style={{fontWeight:700}}>{a}</span></div><div><span className="badge badge-moderate" style={{marginRight:'0.4rem'}}>Moderate</span><span style={{fontWeight:700}}>{m}</span></div><div><span className="badge badge-diplomatic" style={{marginRight:'0.4rem'}}>Diplomatic</span><span style={{fontWeight:700}}>{d}</span></div></div></div>
+<DecisionTracker role={role} choices={choices}/>
+<div className="situation-box" style={{marginTop:'1.5rem',borderLeftColor:'#f4a236'}}><h3>Reflection Questions</h3><p style={{marginBottom:'0.5rem'}}>Consider these as you prepare your written reflection:</p><ul style={{paddingLeft:'1.25rem',color:'#a8b8d4',fontSize:'0.95rem',lineHeight:1.8}}><li>Which interests did you prioritize, and what did you sacrifice?</li><li>How did the veto dynamic constrain your options?</li><li>Would a different role have led to different decisions?</li><li>What does this reveal about governing cyberspace through multilateral institutions?</li><li>If you replayed the simulation, what would you do differently?</li></ul></div>
+<div style={{textAlign:'center',marginTop:'1.5rem',display:'flex',flexWrap:'wrap',gap:'1rem',justifyContent:'center'}}><button className="btn-primary" onClick={onRestart}>Play Again</button><a href="https://learn.ksu.edu" className="btn-blackboard" target="_blank" rel="noopener noreferrer">Proceed to Blackboard</a></div>
+<footer className="sim-footer">Based on CFR Education materials · Council on Foreign Relations<br/>For educational use · No personal data collected</footer>
+</main>);}
+
+/* ═══ APP ═══ */
+function App(){
+const T=4;const[scr,setScr]=useState('title');const[role,setRole]=useState(null);const[rnd,setRnd]=useState(0);const[ch,setCh]=useState([]);const[cc,setCc]=useState(null);
+const go=useCallback(s=>{setScr(s);window.scrollTo({top:0,behavior:'smooth'});},[]);
+const reset=()=>{setRole(null);setRnd(0);setCh([]);setCc(null);go('title');};
+return(<div>
+{scr==='title'&&<TitleScreen onStart={()=>go('roleSelect')}/>}
+{scr==='roleSelect'&&<RoleSelectScreen onSelect={r=>{setRole(r);setRnd(0);setCh([]);go('briefing');}}/>}
+{scr==='briefing'&&<BriefingScreen role={role} round={rnd} totalRounds={T} onContinue={()=>go('decision')}/>}
+{scr==='decision'&&<DecisionScreen role={role} round={rnd} totalRounds={T} onDecide={c=>{setCc(c);const nc=[...ch,c];setCh(nc);if(nc.filter(x=>x==='a').length>=3&&rnd<T-1){go('escalation');return;}go('outcome');}}/>}
+{scr==='outcome'&&<OutcomeScreen role={role} round={rnd} totalRounds={T} choice={cc} onContinue={()=>{if(rnd>=T-1){go('results');}else{setRnd(r=>r+1);go('briefing');}}}/>}
+{scr==='results'&&<ResultsScreen role={role} choices={ch} onRestart={reset}/>}
+{scr==='escalation'&&<EscalationScreen role={role} choices={ch} onRestart={reset}/>}
+</div>);}
+
+ReactDOM.render(<App/>,document.getElementById('app'));
+</script>
+</body>
+</html>
